@@ -142738,5 +142738,65 @@
       "ranged": 0
     },
     "isTwoHanded": false
+  },
+  {
+    "name": "Avernic Treads",
+    "id": 69691,
+    "version": "",
+    "slot": "feet",
+    "image": "Pink boots.png",
+    "speed": 0,
+    "category": "",
+    "bonuses": {
+      "str": 5,
+      "ranged_str": 1,
+      "magic_str": 10,
+      "prayer": 0
+    },
+    "offensive": {
+      "stab": 2,
+      "slash": 2,
+      "crush": 2,
+      "magic": 8,
+      "ranged": 12
+    },
+    "defensive": {
+      "stab": 25,
+      "slash": 25,
+      "crush": 25,
+      "magic": 10,
+      "ranged": 10
+    },
+    "isTwoHanded": false
+  },
+  {
+    "name": "Eldritch Veil",
+    "id": 69692,
+    "version": "Normal",
+    "slot": "cape",
+    "image": "Colourful cape (gay).png",
+    "speed": 0,
+    "category": "",
+    "bonuses": {
+      "str": 0,
+      "ranged_str": 0,
+      "magic_str": 30,
+      "prayer": -2
+    },
+    "offensive": {
+      "stab": 0,
+      "slash": 0,
+      "crush": 0,
+      "magic": 20,
+      "ranged": 0
+    },
+    "defensive": {
+      "stab": 3,
+      "slash": 3,
+      "crush": 3,
+      "magic": 15,
+      "ranged": 0
+    },
+    "isTwoHanded": false
   }
 ]
