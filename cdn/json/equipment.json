@@ -142801,9 +142801,9 @@
   },
   {
     "name": "Eldritch Necklace",
-    "id": 69692,
-    "version": "Normal",
-    "slot": "necklace",
+    "id": 69695,
+    "version": "",
+    "slot": "neck",
     "image": "Cursed amulet of magic.png",
     "speed": 0,
     "category": "",
