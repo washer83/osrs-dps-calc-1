@@ -163,6 +163,16 @@ export default class BaseCalc {
     return 0;
   }
 
+  public static getTmStaffAccuracyRoll(atk: number, def: number): number {
+    // First, compute the single roll chance using our normal accuracy formula.
+    const singleRoll = BaseCalc.getNormalAccuracyRoll(atk, def);
+    // Then, combine two independent rolls:
+    // chance to hit at least once = 1 - (chance to miss both)
+    //return 1 - Math.pow(1 - singleRoll, 2);
+    const doubleRoll = (1 - Math.pow(1 - singleRoll, 2));
+    return doubleRoll;
+  }
+
   /**
    * Simple utility function for checking if an item name is equipped. If an array of string is passed instead, this
    * function will return a boolean indicating whether ANY of the provided items are equipped.
@@ -320,6 +330,10 @@ export default class BaseCalc {
    */
   protected isWearingFang(): boolean {
     return this.wearing(["Osmumten's fang", "Osmumten's fang (or)"]);
+  }
+
+  protected isWearingTmStaff(): boolean {
+    return this.wearing(["TM's Crackpot"]);
   }
 
   protected isWearingAccursedSceptre(): boolean {
