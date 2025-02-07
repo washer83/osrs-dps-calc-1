@@ -23,7 +23,10 @@ module.exports = {
         'react/jsx-props-no-spreading': ['error', {'custom': 'ignore'}],
         'import/no-named-as-default': 'off',
         'react/no-unstable-nested-components': ['error', {'allowAsProps': true}],
-        'no-console': 'off'
+        'no-console': 'off',
+        'implicit-arrow-linebreak': 'off',
+        'function-paren-newline': 'off',
+        'operator-linebreak': 'off'
     },
     parserOptions: {
         project: './tsconfig.json'
