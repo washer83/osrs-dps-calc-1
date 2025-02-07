@@ -168,8 +168,8 @@ export default class BaseCalc {
     const singleRoll = BaseCalc.getNormalAccuracyRoll(atk, def);
     // Then, combine two independent rolls:
     // chance to hit at least once = 1 - (chance to miss both)
-    //return 1 - Math.pow(1 - singleRoll, 2);
-    const doubleRoll = (1 - Math.pow(1 - singleRoll, 2));
+    // return 1 - Math.pow(1 - singleRoll, 2);
+    const doubleRoll = (1 - (1 - singleRoll) ** 2);
     return doubleRoll;
   }
 
