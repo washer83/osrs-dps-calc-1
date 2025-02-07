@@ -13,6 +13,7 @@ import { DPS_PRECISION } from '@/lib/constants';
 
 export enum CompareXAxis {
   MONSTER_DEF,
+  MONSTER_MAGIC_DEF,
   MONSTER_MAGIC,
   MONSTER_HP,
   PLAYER_ATTACK_LEVEL,
@@ -49,13 +50,9 @@ export interface CompareResult {
 
 export default class Comparator {
   private readonly baseLoadouts: Player[];
-
   private readonly baseMonster: Monster;
-
   private readonly xAxis: CompareXAxis;
-
   private readonly yAxis: CompareYAxis;
-
   private readonly commonOpts: CalcOpts;
 
   constructor(players: Player[], monster: Monster, xAxis: CompareXAxis, yAxis: CompareYAxis) {
@@ -63,7 +60,6 @@ export default class Comparator {
     this.baseMonster = scaleMonster(monster);
     this.xAxis = xAxis;
     this.yAxis = yAxis;
-
     this.commonOpts = {
       disableMonsterScaling: true,
     };
@@ -73,22 +69,17 @@ export default class Comparator {
     const monsterInput = (x: number, alterations: PartialDeep<Monster>): InputSet => ({
       xValue: x,
       loadouts: this.baseLoadouts,
-      monster: typedMerge(
-        this.baseMonster,
-        alterations,
-      ),
+      monster: typedMerge(this.baseMonster, alterations),
     });
 
     const playerInput = (x: number, alterations: PartialDeep<Player>): InputSet => ({
       xValue: x,
-      loadouts: this.baseLoadouts.map((p) => typedMerge(
-        p,
-        alterations,
-      )),
+      loadouts: this.baseLoadouts.map((p) => typedMerge(p, alterations)),
       monster: this.baseMonster,
     });
 
-    const skillInput = (x: number, stat: keyof PlayerSkills): InputSet => playerInput(x, { skills: { [stat]: x }, boosts: { [stat]: 0 } });
+    const skillInput = (x: number, stat: keyof PlayerSkills): InputSet =>
+      playerInput(x, { skills: { [stat]: x }, boosts: { [stat]: 0 } });
 
     switch (this.xAxis) {
       case CompareXAxis.MONSTER_DEF:
@@ -99,7 +90,7 @@ export default class Comparator {
 
       case CompareXAxis.MONSTER_MAGIC:
         for (let newMagic = this.baseMonster.skills.magic; newMagic >= 0; newMagic--) {
-          yield monsterInput(newMagic, { skills: { magic: newMagic } });
+          yield monsterInput(newMagic, { skills: { def: newMagic } });
         }
         return;
 
@@ -109,10 +100,7 @@ export default class Comparator {
             xValue: newHp,
             loadouts: this.baseLoadouts,
             monster: scaleMonsterHpOnly(
-              merge(
-                this.baseMonster,
-                { inputs: { monsterCurrentHp: newHp } },
-              ),
+              merge(this.baseMonster, { inputs: { monsterCurrentHp: newHp } })
             ),
           };
         }
@@ -182,12 +170,15 @@ export default class Comparator {
 
   private getOutput(x: InputSet): { [loadout: string]: string | undefined } {
     const res: { [loadout: string]: string | undefined } = {};
-    const apply = (resultProvider: (loadout: Player) => string | undefined) => x.loadouts.forEach((l) => {
-      res[l.name] = resultProvider(l);
-    });
+    const apply = (resultProvider: (loadout: Player) => string | undefined) =>
+      x.loadouts.forEach((l) => {
+        res[l.name] = resultProvider(l);
+      });
 
-    const forwardCalc = (loadout: Player) => new PlayerVsNPCCalc(loadout, x.monster, this.commonOpts);
-    const reverseCalc = (loadout: Player) => new NPCVsPlayerCalc(loadout, x.monster, this.commonOpts);
+    const forwardCalc = (loadout: Player) =>
+      new PlayerVsNPCCalc(loadout, x.monster, this.commonOpts);
+    const reverseCalc = (loadout: Player) =>
+      new NPCVsPlayerCalc(loadout, x.monster, this.commonOpts);
 
     switch (this.yAxis) {
       case CompareYAxis.PLAYER_DPS:
@@ -259,7 +250,6 @@ export default class Comparator {
 
   public getEntries(): [ChartEntry[], number] {
     let domainMax: number = 0;
-
     const res: ChartEntry[] = [];
     for (const x of this.inputsIterator()) {
       const y = this.getOutput(x);
@@ -269,13 +259,11 @@ export default class Comparator {
           domainMax = f;
         }
       }
-
       res.push({
         ...y,
         name: x.xValue,
       });
     }
-
     return [res, domainMax];
   }
 }

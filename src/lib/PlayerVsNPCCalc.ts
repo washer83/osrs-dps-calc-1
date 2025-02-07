@@ -829,6 +829,8 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       maxHit = Math.trunc(magicLevel / 3 - 2);
     } else if (this.wearing(['Sanguinesti staff', 'Holy sanguinesti staff'])) {
       maxHit = Math.trunc(magicLevel / 3 - 1);
+    } else if (this.wearing("TM's Crackpot")) {
+      maxHit = Math.trunc(magicLevel / 4);
     } else if (this.wearing('Dawnbringer')) {
       maxHit = Math.trunc(magicLevel / 6 - 1);
       if (this.opts.usingSpecialAttack) { // guaranteed hit between 75-150, ignores bonuses
@@ -1085,6 +1087,14 @@ export default class PlayerVsNPCCalc extends BaseCalc {
           BaseCalc.getFangAccuracyRoll(atk, def),
         );
       }
+    }
+
+    const tmStaffAccuracy = this.isWearingTmStaff();
+    if (tmStaffAccuracy) {
+      hitChance = this.track(
+        DetailKey.PLAYER_ACCURACY_TM_STAFF,
+        BaseCalc.getTmStaffAccuracyRoll(atk, def),
+      );
     }
 
     return this.track(DetailKey.PLAYER_ACCURACY_FINAL, hitChance);
