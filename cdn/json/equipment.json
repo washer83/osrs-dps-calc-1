@@ -142828,5 +142828,35 @@
       "ranged": 10
     },
     "isTwoHanded": false
+  },
+  {
+    "name": "TM's Crackpot",
+    "id": 123456789,
+    "version": "Charged",
+    "slot": "weapon",
+    "image": "3rd age druidic staff.png",
+    "speed": 3,
+    "category": "Powered Staff",
+    "bonuses": {
+      "str": 0,
+      "ranged_str": 0,
+      "magic_str": 0,
+      "prayer": 0
+    },
+    "offensive": {
+      "stab": 0,
+      "slash": 0,
+      "crush": 0,
+      "magic": 32,
+      "ranged": 0
+    },
+    "defensive": {
+      "stab": 2,
+      "slash": 3,
+      "crush": 1,
+      "magic": 15,
+      "ranged": 0
+    },
+    "isTwoHanded": true
   }
 ]
