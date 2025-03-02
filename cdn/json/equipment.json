@@ -143758,5 +143758,95 @@
       "ranged": 0
     },
     "isTwoHanded": true
+  },
+  {
+    "name": "Soul Helm",
+    "id": 123456,
+    "version": "",
+    "slot": "head",
+    "image": "Skeletal helm.png",
+    "speed": 0,
+    "category": "",
+    "bonuses": {
+      "str": 6,
+      "ranged_str": 0,
+      "magic_str": 0,
+      "prayer": 0
+    },
+    "offensive": {
+      "stab": 0,
+      "slash": 10,
+      "crush": 0,
+      "magic": -2,
+      "ranged": -7
+    },
+    "defensive": {
+      "stab": 50,
+      "slash": 72,
+      "crush": 45,
+      "magic": 0,
+      "ranged": 50
+    },
+    "isTwoHanded": false
+  },
+  {
+    "name": "Soul Chestplate",
+    "id": 1234567,
+    "version": "",
+    "slot": "body",
+    "image": "Skeletal top.png",
+    "speed": 0,
+    "category": "",
+    "bonuses": {
+      "str": 4,
+      "ranged_str": 0,
+      "magic_str": 0,
+      "prayer": 0
+    },
+    "offensive": {
+      "stab": 0,
+      "slash": 16,
+      "crush": 0,
+      "magic": -16,
+      "ranged": -18
+    },
+    "defensive": {
+      "stab": 105,
+      "slash": 128,
+      "crush": 100,
+      "magic": -5,
+      "ranged": 112
+    },
+    "isTwoHanded": false
+  },
+  {
+    "name": "Soul Platelegs",
+    "id": 1234568,
+    "version": "",
+    "slot": "legs",
+    "image": "Skeletal bottoms.png",
+    "speed": 0,
+    "category": "",
+    "bonuses": {
+      "str": 2,
+      "ranged_str": 0,
+      "magic_str": 0,
+      "prayer": 0
+    },
+    "offensive": {
+      "stab": 0,
+      "slash": 12,
+      "crush": 0,
+      "magic": -12,
+      "ranged": -14
+    },
+    "defensive": {
+      "stab": 75,
+      "slash": 100,
+      "crush": 73,
+      "magic": -3,
+      "ranged": -21
+    },
+    "isTwoHanded": false
   }
 ]
