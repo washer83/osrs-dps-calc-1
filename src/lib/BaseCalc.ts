@@ -3,7 +3,7 @@ import { Monster } from '@/types/Monster';
 import { AmmoApplicability, ammoApplicability, getCanonicalEquipment } from '@/lib/Equipment';
 import UserIssueType from '@/enums/UserIssueType';
 import { MonsterAttribute } from '@/enums/MonsterAttribute';
-import { CAST_STANCES } from '@/lib/constants';
+import { CAST_STANCES, VERZIK_P2_IDS } from '@/lib/constants';
 import { UserIssue } from '@/types/State';
 import { CalcDetails, DetailEntry } from '@/lib/CalcDetails';
 import { Factor } from '@/lib/Math';
@@ -719,6 +719,10 @@ export default class BaseCalc {
       this.wearing('Dawnbringer') && (this.monster.name !== 'Verzik Vitur' || !this.monster.version?.includes('Phase 1'))
     ) {
       this.addIssue(UserIssueType.WEAPON_WRONG_MONSTER, 'This weapon cannot be used against the select monster.');
+    }
+
+    if (this.isUsingMeleeStyle() && this.isWearingScythe() && VERZIK_P2_IDS.includes(this.monster.id)) {
+      this.addIssue(UserIssueType.MONSTER_UNIQUE_EFFECTS, 'Scythe has been automatically set to 5.3 tick attack speed as it is being used against P2 Verzik.');
     }
 
     // Some set effects are currently not accounted for
