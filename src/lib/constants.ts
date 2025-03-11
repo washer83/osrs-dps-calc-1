@@ -83,6 +83,12 @@ export const VERZIK_P1_IDS = [
   10847, 10848, 10849, // hmt
 ];
 
+export const VERZIK_P2_IDS = [
+  10833,
+  8372,
+  10850,
+];
+
 export const VERZIK_IDS = [
   ...VERZIK_P1_IDS,
   10833, 10834, 10835, // verzik entry mode

@@ -40,6 +40,7 @@ import {
   TTK_DIST_MAX_ITER_ROUNDS,
   USES_DEFENCE_LEVEL_FOR_MAGIC_DEFENCE_NPC_IDS,
   VERZIK_P1_IDS,
+  VERZIK_P2_IDS,
 } from '@/lib/constants';
 import { EquipmentCategory } from '@/enums/EquipmentCategory';
 import { DetailKey } from '@/lib/CalcDetails';
@@ -1649,7 +1650,11 @@ export default class PlayerVsNPCCalc extends BaseCalc {
   /**
    * Returns the player's attack speed.
    */
+
   public getAttackSpeed(): number {
+    if (this.isUsingMeleeStyle() && this.isWearingScythe() && VERZIK_P2_IDS.includes(this.monster.id)) {
+      return 5.3;
+    }
     return this.player.attackSpeed
       ?? calculateAttackSpeed(this.player, this.monster);
   }
