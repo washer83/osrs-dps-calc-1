@@ -734,5 +734,8 @@ export default class BaseCalc {
     if (this.wearing('Echo boots')) {
       this.addIssue(UserIssueType.FEET_RECOIL_UNSUPPORTED, 'The calculator does not account for recoil damage.');
     }
+    if (this.wearing('Confliction Gauntlets')) {
+      this.addIssue(UserIssueType.EQUIPMENT_GLOVE_EFFECT_UNSUPPORTED, 'The passive effect should be added, depending on how much you trust in my ability to do Markov chain math, but was also verified by simulations. ~ washer');
+    }
   }
 }

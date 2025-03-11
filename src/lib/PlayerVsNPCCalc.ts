@@ -829,6 +829,8 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       maxHit = Math.trunc(magicLevel / 3 - 2);
     } else if (this.wearing(['Sanguinesti staff', 'Holy sanguinesti staff'])) {
       maxHit = Math.trunc(magicLevel / 3 - 1);
+    } else if (this.wearing('The Eye of Ayak')) {
+      maxHit = Math.trunc(magicLevel / 3 - 6);
     } else if (this.wearing("TM's Crackpot")) {
       maxHit = Math.trunc(magicLevel / 4);
     } else if (this.wearing('Dawnbringer')) {
@@ -1076,6 +1078,13 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       const effectHitChance = BaseCalc.getNormalAccuracyRoll(atk, effectDef);
 
       hitChance = this.track(DetailKey.PLAYER_ACCURACY_BRIMSTONE, (0.75 * hitChance) + (0.25 * effectHitChance));
+    }
+
+    if (this.player.style.type === 'magic' && this.wearing('Confliction Gauntlets')) {
+      hitChance = this.track(
+        DetailKey.PLAYER_ACCURACY_CONFLICTED,
+        (3 * hitChance - 3 * (hitChance ** 2) + (hitChance ** 3)) / (2 - hitChance),
+      );
     }
 
     if (this.isWearingFang() && this.player.style.type === 'stab') {
