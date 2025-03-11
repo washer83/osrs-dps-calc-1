@@ -74,6 +74,7 @@ export enum DetailKey {
   PLAYER_ACCURACY_TD = 'Player accuracy override tormented demon',
   PLAYER_ACCURACY_BASE = 'Player accuracy base',
   PLAYER_ACCURACY_BRIMSTONE = 'Player accuracy brimstone ring',
+  PLAYER_ACCURACY_CONFLICTED = 'Player accuracy Conflicted Gaunetlets',
   PLAYER_ACCURACY_FANG_TOA = 'Player accuracy fang toa',
   PLAYER_ACCURACY_FANG = 'Player accuracy fang',
   PLAYER_ACCURACY_FINAL = 'Player accuracy',

@@ -729,7 +729,7 @@ export default class BaseCalc {
       this.addIssue(UserIssueType.FEET_RECOIL_UNSUPPORTED, 'The calculator does not account for recoil damage.');
     }
     if (this.wearing('Confliction Gauntlets')) {
-      this.addIssue(UserIssueType.EQUIPMENT_GLOVE_EFFECT_UNSUPPORTED, 'I am currently too lazy to add the Confliction Gauntlet passive effects. \n Will do when I remember ~ washer');
+      this.addIssue(UserIssueType.EQUIPMENT_GLOVE_EFFECT_UNSUPPORTED, 'The passive effect should be added, depending on how much you trust in my ability to do Markov chain math, but was also verified by simulations. ~ washer');
     }
   }
 }

@@ -1184,6 +1184,13 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       hitChance = this.track(DetailKey.PLAYER_ACCURACY_BRIMSTONE, (0.75 * hitChance) + (0.25 * effectHitChance));
     }
 
+    if (this.player.style.type === 'magic' && this.wearing('Confliction Gauntlets')) {
+      hitChance = this.track(
+        DetailKey.PLAYER_ACCURACY_CONFLICTED,
+        (3 * hitChance - 3 * (hitChance ** 2) + (hitChance ** 3)) / (2 - hitChance),
+      );
+    }
+
     const fangAccuracy = this.isWearingFang() && this.player.style.type === 'stab';
     const drygoreAccuracy = this.wearing('Drygore blowpipe') && this.player.style.stance !== 'Manual Cast';
     if (fangAccuracy || drygoreAccuracy) {
