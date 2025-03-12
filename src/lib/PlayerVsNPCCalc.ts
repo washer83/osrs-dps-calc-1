@@ -1592,6 +1592,8 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       );
     }
 
+    dist = dist.transform(flatLimitTransformer(this.monster.skills.hp));
+
     return dist;
   }
 
