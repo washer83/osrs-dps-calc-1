@@ -1652,10 +1652,9 @@ export default class PlayerVsNPCCalc extends BaseCalc {
   /**
    * Returns the player's attack speed.
    */
-
   public getAttackSpeed(): number {
     if (this.isUsingMeleeStyle() && this.isWearingScythe() && VERZIK_P2_IDS.includes(this.monster.id)) {
-      return 5.3;
+      return 16/3;
     }
     return this.player.attackSpeed
       ?? calculateAttackSpeed(this.player, this.monster);
