@@ -1130,14 +1130,7 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       BaseCalc.getNormalAccuracyRoll(atk, def),
     );
 
-    if (this.player.style.type === 'magic' && this.wearing('Brimstone ring')) {
-      const effectDef = Math.trunc(def * 9 / 10);
-      const effectHitChance = BaseCalc.getNormalAccuracyRoll(atk, effectDef);
-
-      hitChance = this.track(DetailKey.PLAYER_ACCURACY_BRIMSTONE, (0.75 * hitChance) + (0.25 * effectHitChance));
-    }
-
-    if (this.player.style.type === 'magic' && this.wearing('Confliction Gauntlets')) {
+    if (this.player.style.type === 'magic' && this.wearing('Confliction Gauntlets') && this.player.attackSpeed < 5) {
       hitChance = this.track(
         DetailKey.PLAYER_ACCURACY_CONFLICTED,
         (3 * hitChance - 3 * (hitChance ** 2) + (hitChance ** 3)) / (2 - hitChance),
