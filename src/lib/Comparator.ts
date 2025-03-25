@@ -70,6 +70,7 @@ export default class Comparator {
     this.xAxis = xAxis;
     this.yAxis = yAxis;
     this.commonOpts = {
+      loadoutName: 'comparator',
       disableMonsterScaling: true,
     };
   }

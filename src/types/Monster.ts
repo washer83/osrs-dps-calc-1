@@ -72,8 +72,13 @@ export interface Monster {
     partyMaxCombatLevel: number;
     /**
      * Average mining level of the party for Chambers of Xeric.
+     * @deprecated use {@link partySumMiningLevel}
      */
-    partyAvgMiningLevel: number;
+    partyAvgMiningLevel?: number;
+    /**
+     * Sum total of cox party members' mining level, used to determine guardians' hp
+     */
+    partySumMiningLevel: number;
     /**
      * Highest hitpoints level of the party for Chambers of Xeric.
      */
@@ -99,6 +104,8 @@ export interface Monster {
       bgs: number;
       tonalztic: number;
     };
+
+    demonbaneVulnerability?: number;
 
     /** @deprecated use {@link phase} */
     tormentedDemonPhase?: typeof TD_PHASES[number];

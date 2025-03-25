@@ -228,6 +228,33 @@ export const ICE_DEMON_IDS = [
   7585, // cm
 ];
 
+export const VESPINE_SOLDIER_IDS = [
+  7538, 7539,
+];
+
+export const DEATHLY_RANGER_IDS = [ // cox tightrope rangers
+  7559,
+];
+
+export const VESPULA_IDS = [
+  7530, 7531, 7532,
+];
+
+export const COX_MAGIC_IS_DEFENSIVE_IDS = [
+  ...DEATHLY_RANGER_IDS,
+  ...TEKTON_IDS,
+  ...ABYSSAL_PORTAL_IDS,
+  ...VESPULA_IDS,
+  ...VESPINE_SOLDIER_IDS,
+  ...OLM_MELEE_HAND_IDS,
+  ...OLM_MAGE_HAND_IDS,
+];
+
+export const COX_USE_SINGLES_SCALING_IDS = [
+  ...SCAVENGER_BEAST_IDS,
+  ...VESPINE_SOLDIER_IDS,
+];
+
 /**
  * IDs of the Fragment of Seren.
  */
@@ -355,6 +382,20 @@ export const BA_ATTACKER_MONSTERS = [
 
 export const VARDORVIS_IDS = [12223, 12224, 12228, 12425, 12426, 13656];
 
+export const TITAN_BOSS_IDS = [
+  12596, // Fire elemental (Royal Titans)
+  14147, // Ice elemental (Royal Titans)
+];
+
+export const TITAN_ELEMENTAL_IDS = [
+  14150, // Fire elemental (Royal Titans)
+  14151, // Ice elemental (Royal Titans)
+];
+
+export const UNDERWATER_MONSTERS = [
+  7796, // lobstrosity
+];
+
 export const ACCURACY_PRECISION = 2;
 export const DPS_PRECISION = 3;
 export const EXPECTED_HIT_PRECISION = 1;
@@ -429,3 +470,6 @@ export const HUEYCOATL_IDS = [
 export const HUEYCOATL_PHASES = ['Without Pillar', 'With Pillar'];
 export const HUEYCOATL_PHASE_IDS = [...HUEYCOATL_HEAD_IDS, ...HUEYCOATL_TAIL_IDS]; // body can't receive pillar buff
 HUEYCOATL_PHASE_IDS.forEach((id) => { MONSTER_PHASES_BY_ID[id] = HUEYCOATL_PHASES; });
+
+export const ROYAL_TITANS_PHASES = ['In Melee Range', 'Out of Melee Range'];
+TITAN_BOSS_IDS.forEach((id) => { MONSTER_PHASES_BY_ID[id] = ROYAL_TITANS_PHASES; });

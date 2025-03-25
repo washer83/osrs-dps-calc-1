@@ -33,21 +33,23 @@ import {
   OLM_MAGE_HAND_IDS,
   OLM_MELEE_HAND_IDS,
   ONE_HIT_MONSTERS,
+  P2_WARDEN_IDS,
   SECONDS_PER_TICK,
   TEKTON_IDS,
+  TITAN_BOSS_IDS,
+  TITAN_ELEMENTAL_IDS,
   TOMBS_OF_AMASCUT_MONSTER_IDS,
   TTK_DIST_EPSILON,
   TTK_DIST_MAX_ITER_ROUNDS,
+  UNDERWATER_MONSTERS,
   USES_DEFENCE_LEVEL_FOR_MAGIC_DEFENCE_NPC_IDS,
   VERZIK_P1_IDS,
   VERZIK_P2_IDS,
 } from '@/lib/constants';
 import { EquipmentCategory } from '@/enums/EquipmentCategory';
 import { DetailKey } from '@/lib/CalcDetails';
-import { Factor, MinMax } from '@/lib/Math';
-import {
-  AmmoApplicability, ammoApplicability, calculateAttackSpeed, WEAPON_SPEC_COSTS,
-} from '@/lib/Equipment';
+import { Factor, iLerp, MinMax } from '@/lib/Math';
+import { calculateAttackSpeed, WEAPON_SPEC_COSTS } from '@/lib/Equipment';
 import BaseCalc, { CalcOpts, InternalOpts } from '@/lib/BaseCalc';
 import { scaleMonster, scaleMonsterHpOnly } from '@/lib/MonsterScaling';
 import { CombatStyleType, getRangedDamageType } from '@/types/PlayerCombatStyle';
@@ -73,10 +75,8 @@ const PARTIALLY_IMPLEMENTED_SPECS: string[] = [
 // Some entries are intentionally omitted as they are not dps-related (e.g. dragon skilling tools, ivandis flail, dbaxe)
 const UNIMPLEMENTED_SPECS: string[] = [
   'Abyssal tentacle',
-  'Abyssal whip',
   'Ancient mace',
   'Armadyl crossbow',
-  'Barrelchest anchor',
   'Blue moon spear',
   'Bone dagger',
   'Brine sabre',
@@ -86,23 +86,13 @@ const UNIMPLEMENTED_SPECS: string[] = [
   'Dragon 2h sword',
   'Dragon crossbow',
   'Dragon hasta',
-  'Dragon knife',
-  'Dragon longsword',
-  'Dragon mace',
-  'Dragon scimitar',
   'Dragon spear',
-  'Dragon sword',
   'Dragon thrownaxe',
   'Eclipse atlatl',
   'Excalibur',
   'Granite hammer',
   'Granite maul',
-  'Heavy ballista',
-  'Light ballista',
   'Rune claws',
-  'Saradomin sword',
-  "Saradomin's blessed sword",
-  'Seercull',
   'Staff of balance',
   'Staff of light',
   'Staff of the dead',
@@ -140,15 +130,20 @@ export default class PlayerVsNPCCalc extends BaseCalc {
         'Dragon claws',
         'Dragon dagger',
         'Dragon halberd',
+        'Dragon longsword',
+        'Dragon scimitar',
         'Crystal halberd',
         'Abyssal dagger',
+        'Saradomin sword',
       ]) || this.isWearingGodsword()) {
         defenceStyle = 'slash';
-      } else if (this.wearing(['Arclight', 'Emberlight'])) {
+      } else if (this.wearing(['Arclight', 'Emberlight', 'Dragon sword'])) {
         defenceStyle = 'stab';
-      } else if (this.wearing('Voidwaker')) {
-        // doesn't really matter since it's 100% accuracy but eh
+      } else if (this.wearing(['Voidwaker', "Saradomin's blessed sword"])) {
+        // doesn't really matter for voidwaker since it's 100% accuracy but eh
         defenceStyle = 'magic';
+      } else if (this.wearing('Dragon mace')) {
+        defenceStyle = 'crush';
       }
     }
 
@@ -234,10 +229,10 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_REV_WEAPON, attackRoll, [3, 2]);
     }
     if (this.wearing(['Arclight', 'Emberlight']) && mattrs.includes(MonsterAttribute.DEMON)) {
-      attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_DEMONBANE, attackRoll, this.demonbaneFactor([7, 10]));
+      attackRoll = this.trackAddFactor(DetailKey.PLAYER_ACCURACY_DEMONBANE, attackRoll, this.demonbaneFactor(70));
     }
     if (this.wearing(['Bone claws', 'Burning claws']) && mattrs.includes(MonsterAttribute.DEMON)) {
-      attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_DEMONBANE, attackRoll, this.demonbaneFactor([1, 20]));
+      attackRoll = this.trackAddFactor(DetailKey.PLAYER_ACCURACY_DEMONBANE, attackRoll, this.demonbaneFactor(5));
     }
     if (mattrs.includes(MonsterAttribute.DRAGON)) {
       if (this.wearing('Dragon hunter lance')) {
@@ -288,7 +283,7 @@ export default class PlayerVsNPCCalc extends BaseCalc {
         attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_SPEC, attackRoll, [2, 1]);
       } else if (this.isWearingFang()) {
         attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_SPEC, attackRoll, [3, 2]);
-      } else if (this.wearing('Elder maul')) {
+      } else if (this.wearing(['Elder maul', 'Dragon mace', 'Dragon sword', 'Dragon scimitar', 'Abyssal whip'])) {
         attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_SPEC, attackRoll, [5, 4]);
       } else if (this.wearing('Dragon dagger')) {
         attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_SPEC, attackRoll, [23, 20]);
@@ -297,6 +292,10 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       } else if (this.wearing('Soulreaper axe')) {
         const stacks = Math.max(0, Math.min(5, this.player.buffs.soulreaperStacks));
         attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_SPEC, attackRoll, [100 + 6 * stacks, 100]);
+      } else if (this.wearing('Brine sabre')) {
+        attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_SPEC, attackRoll, [2, 1]);
+      } else if (this.wearing('Barrelchest anchor')) {
+        attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_SPEC, attackRoll, [2, 1]);
       }
     }
 
@@ -362,10 +361,10 @@ export default class PlayerVsNPCCalc extends BaseCalc {
     }
 
     if (this.wearing(['Arclight', 'Emberlight']) && mattrs.includes(MonsterAttribute.DEMON)) {
-      maxHit = this.trackFactor(DetailKey.MAX_HIT_DEMONBANE, maxHit, this.demonbaneFactor([7, 10]));
+      maxHit = this.trackAddFactor(DetailKey.MAX_HIT_DEMONBANE, maxHit, this.demonbaneFactor(70));
     }
     if (this.wearing(['Bone claws', 'Burning claws']) && mattrs.includes(MonsterAttribute.DEMON)) {
-      maxHit = this.trackFactor(DetailKey.MAX_HIT_DEMONBANE, maxHit, this.demonbaneFactor([1, 20]));
+      maxHit = this.trackAddFactor(DetailKey.MAX_HIT_DEMONBANE, maxHit, this.demonbaneFactor(5));
     }
     if (this.isWearingTzhaarWeapon() && this.isWearingObsidian()) {
       const obsidianBonus = this.trackFactor(DetailKey.MAX_HIT_OBSIDIAN, baseMax, [1, 10]);
@@ -385,7 +384,7 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       maxHit = this.trackFactor(DetailKey.MAX_HIT_REV_WEAPON, maxHit, [3, 2]);
     }
     if (this.wearing(['Silverlight', 'Darklight', 'Silverlight (dyed)']) && mattrs.includes(MonsterAttribute.DEMON)) {
-      maxHit = this.trackFactor(DetailKey.MAX_HIT_DEMONBANE, maxHit, this.demonbaneFactor([3, 5]));
+      maxHit = this.trackAddFactor(DetailKey.MAX_HIT_DEMONBANE, maxHit, this.demonbaneFactor(60));
     }
 
     if (this.wearing('Leaf-bladed battleaxe') && mattrs.includes(MonsterAttribute.LEAFY)) {
@@ -435,11 +434,11 @@ export default class PlayerVsNPCCalc extends BaseCalc {
         maxHit = this.trackFactor(DetailKey.MAX_HIT_GODSWORD_SPEC, maxHit, [11, 10]);
       }
 
-      if (this.wearing('Bandos godsword')) {
+      if (this.wearing(['Bandos godsword', 'Saradomin sword'])) {
         maxHit = this.trackFactor(DetailKey.MAX_HIT_SPEC, maxHit, [11, 10]);
-      } else if (this.wearing('Armadyl godsword')) {
+      } else if (this.wearing(['Armadyl godsword', 'Dragon sword', 'Dragon longsword', "Saradomin's blessed sword"])) {
         maxHit = this.trackFactor(DetailKey.MAX_HIT_SPEC, maxHit, [5, 4]);
-      } else if (this.wearing('Dragon warhammer')) {
+      } else if (this.wearing(['Dragon mace', 'Dragon warhammer'])) {
         maxHit = this.trackFactor(DetailKey.MAX_HIT_SPEC, maxHit, [3, 2]);
       } else if (this.wearing('Voidwaker')) {
         minHit = this.trackFactor(DetailKey.MIN_HIT_SPEC, maxHit, [1, 2]);
@@ -453,6 +452,8 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       } else if (this.wearing('Abyssal bludgeon')) {
         const prayerMissing = Math.max(-this.player.boosts.prayer, 0);
         maxHit = this.trackFactor(DetailKey.MAX_HIT_SPEC, maxHit, [100 + (prayerMissing / 2), 100]);
+      } else if (this.wearing('Barrelchest anchor')) {
+        maxHit = this.trackFactor(DetailKey.MAX_HIT_SPEC, maxHit, [110, 100]);
       } else if (this.isWearingBloodMoonSet()) {
         minHit = this.trackFactor(DetailKey.MIN_HIT_SPEC, maxHit, [1, 4]);
         maxHit = this.trackAdd(DetailKey.MAX_HIT_SPEC, maxHit, minHit);
@@ -543,7 +544,7 @@ export default class PlayerVsNPCCalc extends BaseCalc {
     }
 
     if (this.wearing('Scorching bow') && mattrs.includes(MonsterAttribute.DEMON)) {
-      attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_DEMONBANE, attackRoll, this.demonbaneFactor([3, 10]));
+      attackRoll = this.trackAddFactor(DetailKey.PLAYER_ACCURACY_DEMONBANE, attackRoll, this.demonbaneFactor(30));
     }
 
     if (this.opts.usingSpecialAttack) {
@@ -551,7 +552,13 @@ export default class PlayerVsNPCCalc extends BaseCalc {
         attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_SPEC, attackRoll, [2, 1]);
       } else if (this.isWearingMsb()) {
         attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_SPEC, attackRoll, [10, 7]);
+      } else if (this.wearing(['Heavy ballista', 'Light ballista'])) {
+        attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_SPEC, attackRoll, [5, 4]);
       }
+    }
+
+    if (TITAN_BOSS_IDS.includes(this.monster.id) && this.monster.inputs.phase === 'Out of Melee Range') {
+      attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_TITANS_RANGED, attackRoll, [6, 1]);
     }
 
     return attackRoll;
@@ -571,7 +578,29 @@ export default class PlayerVsNPCCalc extends BaseCalc {
     }
     this.track(DetailKey.DAMAGE_LEVEL, effectiveLevel);
 
-    if (this.opts.usingSpecialAttack && (this.isWearingMsb() || this.isWearingMlb())) {
+    if (this.wearing('Holy water')) {
+      if (!this.monster.attributes.includes(MonsterAttribute.DEMON)) {
+        // can't be used against non-demons
+        return [0, 0];
+      }
+
+      // similar to msb + mlb + seercull below
+      effectiveLevel = this.trackAdd(DetailKey.DAMAGE_EFFECTIVE_LEVEL_HOLY_WATER, effectiveLevel, 10);
+
+      const str = 64 + this.player.equipment.weapon!.bonuses.ranged_str;
+      let maxHit = this.trackMaxHitFromEffective(DetailKey.MAX_HIT_BASE, effectiveLevel, str);
+
+      if (this.monster.attributes.includes(MonsterAttribute.DEMON)) {
+        maxHit = this.trackAddFactor(DetailKey.MAX_HIT_DEMONBANE, maxHit, this.demonbaneFactor(60));
+      }
+      if (this.monster.name === 'Nezikchened') {
+        maxHit = this.trackAdd(DetailKey.MAX_HIT_NEZIKCHENED, maxHit, 5);
+      }
+
+      return [0, maxHit];
+    }
+
+    if (this.opts.usingSpecialAttack && (this.isWearingMsb() || this.isWearingMlb() || this.wearing('Seercull'))) {
       // why +10 when that's not used anywhere else? who knows
       effectiveLevel += 10;
 
@@ -604,7 +633,7 @@ export default class PlayerVsNPCCalc extends BaseCalc {
     }
 
     const bonusStr = scalesWithStr ? this.player.bonuses.str : this.player.bonuses.ranged_str;
-    const baseMax = Math.trunc((effectiveLevel * (bonusStr + 64) + 320) / 640);
+    const baseMax = this.trackMaxHitFromEffective(DetailKey.MAX_HIT_BASE, effectiveLevel, 64 + bonusStr);
     let [minHit, maxHit]: MinMax = [0, baseMax];
 
     // tested this in-game, slayer helmet (i) + crystal legs + crystal body + bowfa, on accurate, no rigour, 99 ranged
@@ -662,7 +691,7 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       maxHit = Math.trunc(maxHit * 5 / 4);
     }
     if (needDemonbane) {
-      maxHit = this.trackFactor(DetailKey.MAX_HIT_DEMONBANE, maxHit, this.demonbaneFactor([3, 10]));
+      maxHit = this.trackAddFactor(DetailKey.MAX_HIT_DEMONBANE, maxHit, this.demonbaneFactor(30));
     }
 
     if (this.isWearingRatBoneWeapon() && mattrs.includes(MonsterAttribute.RAT)) {
@@ -681,6 +710,8 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       } else if (this.wearing('Webweaver bow')) {
         const maxReduction = Math.trunc(maxHit * 6 / 10);
         maxHit = this.trackAdd(DetailKey.MAX_HIT_SPEC, maxHit, -maxReduction);
+      } else if (this.wearing(['Heavy ballista', 'Light ballista'])) {
+        maxHit = this.trackFactor(DetailKey.MAX_HIT_SPEC, maxHit, [5, 4]);
       }
     }
 
@@ -691,6 +722,10 @@ export default class PlayerVsNPCCalc extends BaseCalc {
         const dmgFactor = descentOfDragons ? 15 : 13;
         maxHit = this.trackFactor(DetailKey.MAX_HIT_SPEC, maxHit, [dmgFactor, 10]);
       }
+    }
+
+    if (P2_WARDEN_IDS.includes(this.monster.id)) {
+      [minHit, maxHit] = this.applyP2WardensDamageModifier([minHit, maxHit]);
     }
 
     return [minHit, maxHit];
@@ -764,11 +799,11 @@ export default class PlayerVsNPCCalc extends BaseCalc {
     }
 
     if (this.player.spell?.name.includes('Demonbane') && mattrs.includes(MonsterAttribute.DEMON)) {
-      const baseFactor: Factor = buffs.markOfDarknessSpell ? [8, 20] : [4, 20];
+      let demonbanePercent = buffs.markOfDarknessSpell ? 40 : 20;
       if (this.wearing('Purging staff')) {
-        baseFactor[0] *= 2;
+        demonbanePercent *= 2;
       }
-      attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_DEMONBANE, attackRoll, this.demonbaneFactor(baseFactor));
+      attackRoll = this.trackAddFactor(DetailKey.PLAYER_ACCURACY_DEMONBANE, attackRoll, this.demonbaneFactor(demonbanePercent));
     }
     if (this.isRevWeaponBuffApplicable()) {
       attackRoll = this.trackFactor(DetailKey.PLAYER_ACCURACY_REV_WEAPON, attackRoll, [3, 2]);
@@ -821,36 +856,36 @@ export default class PlayerVsNPCCalc extends BaseCalc {
     } else if (this.wearing('Starter staff')) {
       maxHit = 8;
     } else if (this.wearing(['Trident of the seas', 'Trident of the seas (e)'])) {
-      maxHit = Math.trunc(magicLevel / 3 - 5);
+      maxHit = Math.max(1, Math.trunc(magicLevel / 3 - 5));
     } else if (this.wearing("Thammaron's sceptre")) {
-      maxHit = Math.trunc(magicLevel / 3 - 8);
+      maxHit = Math.max(1, Math.trunc(magicLevel / 3 - 8));
     } else if (this.wearing('Accursed sceptre') || (this.wearing('Accursed sceptre (a)') && this.opts.usingSpecialAttack)) {
-      maxHit = Math.trunc(magicLevel / 3 - 6);
+      maxHit = Math.max(1, Math.trunc(magicLevel / 3 - 6));
     } else if (this.wearing(['Trident of the swamp', 'Trident of the swamp (e)'])) {
-      maxHit = Math.trunc(magicLevel / 3 - 2);
+      maxHit = Math.max(1, Math.trunc(magicLevel / 3 - 2));
     } else if (this.wearing(['Sanguinesti staff', 'Holy sanguinesti staff'])) {
-      maxHit = Math.trunc(magicLevel / 3 - 1);
+      maxHit = Math.max(1, Math.trunc(magicLevel / 3 - 1));
     } else if (this.wearing('The Eye of Ayak')) {
       maxHit = Math.trunc(magicLevel / 3 - 6);
     } else if (this.wearing("TM's Crackpot")) {
       maxHit = Math.trunc(magicLevel / 4);
     } else if (this.wearing('Dawnbringer')) {
-      maxHit = Math.trunc(magicLevel / 6 - 1);
+      maxHit = Math.max(1, Math.trunc(magicLevel / 6 - 1));
       if (this.opts.usingSpecialAttack) { // guaranteed hit between 75-150, ignores bonuses
         return [75, 150];
       }
     } else if (this.wearing("Tumeken's shadow")) {
-      maxHit = Math.trunc(magicLevel / 3 + 1);
+      maxHit = Math.max(1, Math.trunc(magicLevel / 3 + 1));
     } else if (this.wearing('Warped sceptre')) {
-      maxHit = Math.trunc((8 * magicLevel + 96) / 37);
+      maxHit = Math.max(1, Math.trunc((8 * magicLevel + 96) / 37));
     } else if (this.wearing('Bone staff')) {
       // although the +10 is technically a ratbane bonus, the weapon can't be used against non-rats
       // and shows this max hit against the combat dummy as well
       maxHit = Math.max(1, Math.trunc(magicLevel / 3) - 5) + 10;
     } else if (this.wearing('Eldritch nightmare staff') && this.opts.usingSpecialAttack) {
-      maxHit = Math.min(44, 44 * Math.trunc(magicLevel / 99) + 1);
+      maxHit = Math.max(1, Math.min(44, 44 * Math.trunc(magicLevel / 99) + 1));
     } else if (this.wearing('Volatile nightmare staff') && this.opts.usingSpecialAttack) {
-      maxHit = Math.min(58, 58 * Math.trunc(magicLevel / 99) + 1);
+      maxHit = Math.max(1, Math.min(58, 58 * Math.trunc(magicLevel / 99) + 1));
     } else if (this.wearing(['Crystal staff (basic)', 'Corrupted staff (basic)'])) {
       maxHit = 23;
     } else if (this.wearing(['Crystal staff (attuned)', 'Corrupted staff (attuned)'])) {
@@ -950,6 +985,10 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       maxHit = this.trackFactor(DetailKey.MAX_HIT_TOME, maxHit, [11, 10]);
     }
 
+    if (P2_WARDEN_IDS.includes(this.monster.id)) {
+      [minHit, maxHit] = this.applyP2WardensDamageModifier([minHit, maxHit]);
+    }
+
     return [minHit, maxHit];
   }
 
@@ -976,12 +1015,8 @@ export default class PlayerVsNPCCalc extends BaseCalc {
    * Don't use this for player-facing values! Use `getMax()`
    */
   getMinAndMax(): MinMax {
-    if (this.player.style.stance !== 'Manual Cast') {
-      const weaponId = this.player.equipment.weapon?.id;
-      const ammoId = this.player.equipment.ammo?.id;
-      if (ammoApplicability(weaponId, ammoId) === AmmoApplicability.INVALID) {
-        return [0, 0];
-      }
+    if (this.player.style.stance !== 'Manual Cast' && this.isAmmoInvalid()) {
+      return [0, 0];
     }
 
     const style = this.player.style.type;
@@ -1018,12 +1053,8 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       return this.track(DetailKey.PLAYER_ACCURACY_ROLL_FINAL, this.opts.overrides?.attackRoll);
     }
 
-    if (this.player.style.stance !== 'Manual Cast') {
-      const weaponId = this.player.equipment.weapon?.id;
-      const ammoId = this.player.equipment.ammo?.id;
-      if (ammoApplicability(weaponId, ammoId) === AmmoApplicability.INVALID) {
-        return this.track(DetailKey.PLAYER_ACCURACY_ROLL_FINAL, 0.0);
-      }
+    if (this.player.style.stance !== 'Manual Cast' && this.isAmmoInvalid()) {
+      return this.track(DetailKey.PLAYER_ACCURACY_ROLL_FINAL, 0.0);
     }
 
     const style = this.player.style.type;
@@ -1051,6 +1082,10 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       return this.track(DetailKey.PLAYER_ACCURACY_FINAL, 1.0);
     }
 
+    if (P2_WARDEN_IDS.includes(this.monster.id)) {
+      return this.track(DetailKey.PLAYER_ACCURACY_FINAL, 1.0);
+    }
+
     // Giant rat (Scurrius)
     if (this.monster.id === 7223 && this.player.style.stance !== 'Manual Cast') {
       this.track(DetailKey.PLAYER_ACCURACY_SCURRIUS_RAT, 1.0);
@@ -1062,8 +1097,29 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       return this.track(DetailKey.PLAYER_ACCURACY_FINAL, 1.0);
     }
 
-    if (this.opts.usingSpecialAttack && (this.wearing(['Voidwaker', 'Dawnbringer']) || this.isWearingMlb())) {
+    // Ice elemental (Royal Titans) Fire elemental (Royal Titans)
+    if (TITAN_ELEMENTAL_IDS.includes(this.monster.id) && this.player.style.type === 'magic') {
+      let accuracy = Math.min(1.0, Math.max(0, this.player.offensive.magic) / 100 + 0.3);
+      if (this.isWearingEliteMagicVoid() || this.isWearingMagicVoid()) {
+        accuracy = Math.min(1.0, accuracy * 1.45);
+      }
+      this.track(DetailKey.PLAYER_ACCURACY_ROYAL_TITAN_ELEMENTAL, accuracy);
+      return this.track(DetailKey.PLAYER_ACCURACY_FINAL, accuracy);
+    }
+
+    if (this.player.style.type === 'magic' && ALWAYS_MAX_HIT_MONSTERS.magic.includes(this.monster.id)) return 1.0;
+    if (this.player.style.type === 'ranged' && ALWAYS_MAX_HIT_MONSTERS.ranged.includes(this.monster.id)) return 1.0;
+    if (this.isUsingMeleeStyle() && ALWAYS_MAX_HIT_MONSTERS.melee.includes(this.monster.id)) return 1.0;
+
+    if (this.opts.usingSpecialAttack && this.wearing(['Voidwaker', 'Dawnbringer'])) {
       return 1.0;
+    }
+
+    if (this.opts.usingSpecialAttack && (this.wearing('Seercull') || this.isWearingMlb())) {
+      if (this.isAmmoInvalid()) {
+        return this.track(DetailKey.PLAYER_ACCURACY_FINAL, 0.0);
+      }
+      return this.track(DetailKey.PLAYER_ACCURACY_FINAL, 1.0);
     }
 
     const atk = this.getMaxAttackRoll();
@@ -1167,6 +1223,10 @@ export default class PlayerVsNPCCalc extends BaseCalc {
     const [min, max] = this.getMinAndMax();
     const style = this.player.style.type;
 
+    if (max === 0) {
+      return new AttackDistribution([new HitDistribution([new WeightedHit(1.0, [Hitsplat.INACCURATE])])]);
+    }
+
     // standard linear
     const standardHitDist = HitDistribution.linear(acc, min, max);
     let dist = new AttackDistribution([standardHitDist]);
@@ -1253,7 +1313,7 @@ export default class PlayerVsNPCCalc extends BaseCalc {
     // simple multi-hit specs
     if (this.opts.usingSpecialAttack) {
       let hitCount = 1;
-      if (this.wearing(['Dragon dagger', 'Abyssal dagger']) || this.isWearingMsb()) {
+      if (this.wearing(['Dragon dagger', 'Dragon knife']) || this.isWearingMsb()) {
         hitCount = 2;
       } else if (this.wearing('Webweaver bow')) {
         hitCount = 4;
@@ -1262,6 +1322,23 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       if (hitCount !== 1) {
         dist = new AttackDistribution(Array(hitCount).fill(standardHitDist));
       }
+    }
+
+    if (this.opts.usingSpecialAttack && this.wearing('Abyssal dagger')) {
+      const secondHit = HitDistribution.linear(1.0, min, max);
+      dist = dist.transform((h) => new HitDistribution([new WeightedHit(1.0, [h])]).zip(secondHit), { transformInaccurate: false });
+    }
+
+    if (this.opts.usingSpecialAttack && this.wearing('Saradomin sword')) {
+      const magicHit = HitDistribution.linear(1.0, 1, 16);
+      dist = dist.transform(
+        (h) => {
+          if (h.accurate && !IMMUNE_TO_MAGIC_DAMAGE_NPC_IDS.includes(this.monster.id)) {
+            return new HitDistribution([new WeightedHit(1.0, [h])]).zip(magicHit);
+          }
+          return new HitDistribution([new WeightedHit(1.0, [h, Hitsplat.INACCURATE])]);
+        },
+      );
     }
 
     if (this.opts.usingSpecialAttack && this.wearing('Purging staff')) {
@@ -1350,8 +1427,8 @@ export default class PlayerVsNPCCalc extends BaseCalc {
     }
 
     if (this.player.buffs.markOfDarknessSpell && this.player.spell?.name.includes('Demonbane') && mattrs.includes(MonsterAttribute.DEMON)) {
-      // todo(wgs): confirm that this is still post-roll with and without purging staff
-      dist = dist.scaleDamage(this.wearing('Purging staff') ? 6 : 5, 4);
+      const demonbaneFactor = this.demonbaneFactor(this.wearing('Purging staff') ? 50 : 25);
+      dist = dist.transform((h) => HitDistribution.single(1.0, [new Hitsplat(h.damage + Math.trunc(h.damage * demonbaneFactor[0] / demonbaneFactor[1]))]));
     }
 
     if (this.player.style.type === 'magic'
@@ -1472,12 +1549,38 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       }
     }
 
+    if (this.player.style.type === 'magic' && this.wearing('Brimstone ring') && !this.opts.overrides.defenceRoll) {
+      const effectChance = 0.25;
+      const effectDef = this.trackFactor(DetailKey.NPC_DEFENCE_BRIMSTONE, this.getNPCDefenceRoll(), [9, 10]);
+      const effectDist = this.noInitSubCalc(this.player, this.monster, {
+        loadoutName: `${this.opts.loadoutName}/brimstone`,
+        overrides: {
+          defenceRoll: effectDef,
+        },
+      }).getDistribution();
+
+      const zippedDists = [];
+      for (let i = 0; i < dist.dists.length; i++) {
+        zippedDists.push(
+          new HitDistribution([
+            ...dist.dists[i]
+              .scaleProbability(1 - effectChance)
+              .hits,
+            ...effectDist.dists[i]
+              .scaleProbability(effectChance)
+              .hits,
+          ]),
+        );
+      }
+      dist = new AttackDistribution(zippedDists).flatten();
+    }
+
     if (process.env.NEXT_PUBLIC_HIT_DIST_SANITY_CHECK) {
       dist.dists.forEach((hitDist, ix) => {
         const sumAccuracy = sum(hitDist.hits, (wh) => wh.probability);
         const fractionalDamage = some(hitDist.hits, (wh) => some(wh.hitsplats, (h) => !Number.isInteger(h.damage)));
         if (Math.abs(sumAccuracy - 1.0) > 0.00001 || fractionalDamage) {
-          console.warn(`Hit dist [${this.opts.loadoutName}/${ix}] failed sanity check!`, { sumAccuracy, fractionalDamage, hitDist });
+          console.warn(`Hit dist [${this.opts.loadoutName}#${ix}] failed sanity check!`, { sumAccuracy, fractionalDamage, hitDist });
         }
       });
     }
@@ -1939,14 +2042,13 @@ export default class PlayerVsNPCCalc extends BaseCalc {
     return subCalc;
   }
 
-  demonbaneFactor(baseFactor: Factor): Factor {
-    let ret = baseFactor;
-    if (this.monster.name === 'Duke Sucellus') {
-      ret = [ret[0] * 7, ret[1] * 10];
-    }
-
-    ret[0] += ret[1];
-    return ret;
+  /**
+   * @param weaponDemonbane as a percent out of 100
+   */
+  demonbaneFactor(weaponDemonbane: number): Factor {
+    const vulnerability = this.monster.inputs.demonbaneVulnerability ?? 100;
+    const percent = this.trackFactor(DetailKey.PLAYER_DEMONBANE_FACTOR, weaponDemonbane, [vulnerability, 100]);
+    return [percent, 100];
   }
 
   public distIsCurrentHpDependent(loadout: Player, monster: Monster): boolean {
@@ -1997,6 +2099,11 @@ export default class PlayerVsNPCCalc extends BaseCalc {
         ? FeatureStatus.NOT_APPLICABLE
         : FeatureStatus.IMPLEMENTED;
     }
+    if (this.wearing('Brine sabre')) {
+      return UNDERWATER_MONSTERS.includes(this.monster.id)
+        ? FeatureStatus.IMPLEMENTED
+        : FeatureStatus.NOT_APPLICABLE;
+    }
 
     if (PARTIALLY_IMPLEMENTED_SPECS.includes(weaponName)) {
       return FeatureStatus.PARTIALLY_IMPLEMENTED;
@@ -2019,11 +2126,35 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       case FeatureStatus.PARTIALLY_IMPLEMENTED:
         return new PlayerVsNPCCalc(this.player, this.baseMonster, {
           ...this.opts,
+          loadoutName: `${this.opts.loadoutName}/spec`,
           usingSpecialAttack: true,
         });
 
       default:
         return null;
     }
+  }
+
+  private applyP2WardensDamageModifier([, max]: MinMax): MinMax {
+    // 1/3 of enemy defence is removed from accuracy
+    const reducedNpcDefence = Math.trunc(this.getNPCDefenceRoll() / 3);
+    const accuracyDelta = this.track(
+      DetailKey.WARDENS_ACCURACY_DELTA,
+      Math.max(this.getMaxAttackRoll() - reducedNpcDefence, 0),
+    );
+
+    // remaining accuracy provides a % dmg modifier from 15% - 40% based on lerp from 0 to 42k MAR
+    const modifier = this.track(
+      DetailKey.WARDENS_DMG_MODIFIER,
+      Math.max(Math.min(iLerp(15, 40, 0, 42_000, accuracyDelta), 40), 15),
+    );
+
+    const maxPctRange = 20;
+    return [
+      // these apply the % separately
+      // in effect, we're dealing between [15-35, 40-60]% of normal damage
+      this.track(DetailKey.MIN_HIT_WARDENS, Math.trunc(max * modifier / 100)),
+      this.track(DetailKey.MAX_HIT_WARDENS, Math.trunc(max * (modifier + maxPctRange) / 100)),
+    ];
   }
 }

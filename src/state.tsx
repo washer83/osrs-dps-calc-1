@@ -28,6 +28,7 @@ import {
   fetchPlayerSkills,
   fetchShortlinkData,
   getCombatStylesForCategory,
+  isDefined,
   PotionMap,
 } from '@/utils';
 import { ComputeBasicRequest, ComputeReverseRequest, WorkerRequestType } from '@/worker/CalcWorkerTypes';
@@ -122,7 +123,7 @@ export const generateEmptyPlayer = (name?: string): Player => ({
     potions: [],
     onSlayerTask: true,
     inWilderness: false,
-    kandarinDiary: false,
+    kandarinDiary: true,
     chargeSpell: false,
     markOfDarknessSpell: false,
     forinthrySurge: false,
@@ -352,7 +353,6 @@ class GlobalState implements State {
 
     // Determine the current global/UI-related issues
     // ex. is.push({ type: UserIssueType.MONSTER_UNIQUE_EFFECTS, message: 'This monster has unique effects that are not yet accounted for. Results may be inaccurate.' });
-
     // Add in the issues returned from the calculator
     for (const l of Object.values(this.calc.loadouts)) {
       if (l.userIssues) is = [...is, ...l.userIssues];
@@ -479,6 +479,13 @@ class GlobalState implements State {
           /* eslint-enable @typescript-eslint/dot-notation */
           /* eslint-enable @typescript-eslint/no-explicit-any */
         });
+
+      case 6:
+        // partyAvgMiningLevel becomes partySumMiningLevel
+        if (isDefined(data.monster.inputs.partyAvgMiningLevel)) {
+          data.monster.inputs.partySumMiningLevel = data.monster.inputs.partyAvgMiningLevel * data.monster.inputs.partySize;
+          delete data.monster.inputs.partyAvgMiningLevel;
+        }
 
       default:
     }

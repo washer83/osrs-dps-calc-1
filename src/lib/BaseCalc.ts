@@ -106,7 +106,7 @@ export default class BaseCalc {
 
   protected trackAdd(label: Parameters<CalcDetails['track']>[0], base: number, addend: number): number {
     const result = Math.trunc(base + addend);
-    this.track(label, result, `${base} ${addend >= 0 ? '+' : '-'} ${-addend} = ${result}`);
+    this.track(label, result, `${base} ${addend >= 0 ? `+${addend}` : `-${-addend}`} = ${result}`);
     return result;
   }
 
@@ -632,12 +632,33 @@ export default class BaseCalc {
     }
   }
 
+  protected isAmmoInvalid(): boolean {
+    return ammoApplicability(this.player.equipment.weapon?.id, this.player.equipment.ammo?.id) === AmmoApplicability.INVALID;
+  }
+
   protected addIssue(type: UserIssueType, message: string) {
     this.userIssues.push({ type, message, loadout: this.opts.loadoutName });
   }
 
   private sanitizeInputs() {
     const eq = this.player.equipment;
+
+    if (this.monster.attributes.includes(MonsterAttribute.DEMON)) {
+      // make sure demonbane effectiveness is set and uses the right value
+      let demonbaneEffectiveness: number = 100;
+      if (this.monster.id === -1 && this.monster.inputs.demonbaneVulnerability !== undefined) {
+        demonbaneEffectiveness = this.monster.inputs.demonbaneVulnerability;
+      } else if (this.monster.name === 'Duke Sucellus') {
+        demonbaneEffectiveness = 70;
+      }
+      this.monster = {
+        ...this.monster,
+        inputs: {
+          ...this.monster.inputs,
+          demonbaneVulnerability: demonbaneEffectiveness,
+        },
+      };
+    }
 
     // make sure monsterCurrentHp is set and valid
     if (!this.monster.inputs.monsterCurrentHp || this.monster.inputs.monsterCurrentHp > this.monster.skills.hp) {
@@ -678,7 +699,7 @@ export default class BaseCalc {
       };
     }
 
-    if (this.player.style.stance !== 'Manual Cast' && ammoApplicability(eq.weapon?.id, eq.ammo?.id) === AmmoApplicability.INVALID) {
+    if (this.player.style.stance !== 'Manual Cast' && this.isAmmoInvalid()) {
       if (eq.ammo?.name) {
         this.addIssue(UserIssueType.EQUIPMENT_WRONG_AMMO, 'This ammo does not work with your current weapon.');
       } else {
@@ -716,7 +737,8 @@ export default class BaseCalc {
 
     // some weapons are only available to use against certain monsters
     if (
-      this.wearing('Dawnbringer') && (this.monster.name !== 'Verzik Vitur' || !this.monster.version?.includes('Phase 1'))
+      (this.wearing('Dawnbringer') && (this.monster.name !== 'Verzik Vitur' || !this.monster.version?.includes('Phase 1'))
+      || (this.wearing('Holy water') && !this.monster.attributes.includes(MonsterAttribute.DEMON)))
     ) {
       this.addIssue(UserIssueType.WEAPON_WRONG_MONSTER, 'This weapon cannot be used against the select monster.');
     }
