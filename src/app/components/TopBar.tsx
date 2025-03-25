@@ -21,7 +21,7 @@ const TopBar: React.FC = observer(() => {
             <span
               className="text-sm text-white px-1 py-0.5 bg-orange-700 rounded [text-shadow:_0_1px_0_rgb(0_0_0_/_30%)] lowercase"
             >
-              Beta
+              !! washer owns u lol !!
             </span>
           </div>
           <div className="block ml-6">
