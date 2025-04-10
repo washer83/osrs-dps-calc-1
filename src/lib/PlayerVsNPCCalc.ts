@@ -45,6 +45,7 @@ import {
   USES_DEFENCE_LEVEL_FOR_MAGIC_DEFENCE_NPC_IDS,
   VERZIK_P1_IDS,
   VERZIK_P2_IDS,
+  MAIDEN_CRAB_IDS,
 } from '@/lib/constants';
 import { EquipmentCategory } from '@/enums/EquipmentCategory';
 import { DetailKey } from '@/lib/CalcDetails';
@@ -1130,7 +1131,7 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       BaseCalc.getNormalAccuracyRoll(atk, def),
     );
 
-    if (this.player.style.type === 'magic' && this.wearing('Confliction Gauntlets') && this.player.attackSpeed < 5) {
+    if (this.player.style.type === 'magic' && this.wearing('Confliction Gauntlets') && !this.player.equipment.weapon?.isTwoHanded) {
       hitChance = this.track(
         DetailKey.PLAYER_ACCURACY_CONFLICTED,
         (3 * hitChance - 3 * (hitChance ** 2) + (hitChance ** 3)) / (2 - hitChance),
@@ -1145,6 +1146,15 @@ export default class PlayerVsNPCCalc extends BaseCalc {
           DetailKey.PLAYER_ACCURACY_FANG,
           BaseCalc.getFangAccuracyRoll(atk, def),
         );
+      }
+    }
+
+    if (this.player.spell?.name.includes('Ice') && MAIDEN_CRAB_IDS.includes(this.monster.id)) {
+      const guaranteedFreezeRoll = (this.player.skills.magic + 9) * 204;
+      const playerMagicRoll = this.getPlayerMaxMagicAttackRoll();
+
+      if (playerMagicRoll > guaranteedFreezeRoll) {
+        return 1.0;
       }
     }
 
