@@ -3,7 +3,7 @@ import { BurnImmunity, Monster } from '@/types/Monster';
 import { AmmoApplicability, ammoApplicability, getCanonicalEquipment } from '@/lib/Equipment';
 import UserIssueType from '@/enums/UserIssueType';
 import { MonsterAttribute } from '@/enums/MonsterAttribute';
-import { CAST_STANCES, IMMUNE_TO_BURN_DAMAGE_NPC_IDS } from '@/lib/constants';
+import { CAST_STANCES, IMMUNE_TO_BURN_DAMAGE_NPC_IDS, VERZIK_P2_IDS } from '@/lib/constants';
 import { UserIssue } from '@/types/State';
 import { CalcDetails, DetailEntry } from '@/lib/CalcDetails';
 import { Factor } from '@/lib/Math';
@@ -163,6 +163,16 @@ export default class BaseCalc {
     return 0;
   }
 
+  public static getTmStaffAccuracyRoll(atk: number, def: number): number {
+    // First, compute the single roll chance using our normal accuracy formula.
+    const singleRoll = BaseCalc.getNormalAccuracyRoll(atk, def);
+    // Then, combine two independent rolls:
+    // chance to hit at least once = 1 - (chance to miss both)
+    // return 1 - Math.pow(1 - singleRoll, 2);
+    const doubleRoll = (1 - (1 - singleRoll) ** 2);
+    return doubleRoll;
+  }
+
   /**
    * Simple utility function for checking if an item name is equipped. If an array of string is passed instead, this
    * function will return a boolean indicating whether ANY of the provided items are equipped.
@@ -320,6 +330,10 @@ export default class BaseCalc {
    */
   protected isWearingFang(): boolean {
     return this.wearing(["Osmumten's fang", "Osmumten's fang (or)"]);
+  }
+
+  protected isWearingTmStaff(): boolean {
+    return this.wearing(["TM's Crackpot"]);
   }
 
   protected isWearingAccursedSceptre(): boolean {
@@ -739,6 +753,10 @@ export default class BaseCalc {
       this.addIssue(UserIssueType.WEAPON_WRONG_MONSTER, 'This weapon cannot be used against the select monster.');
     }
 
+    if (this.isUsingMeleeStyle() && this.isWearingScythe() && VERZIK_P2_IDS.includes(this.monster.id)) {
+      this.addIssue(UserIssueType.MONSTER_UNIQUE_EFFECTS, 'Scythe has been automatically set to 5.3 tick attack speed as it is being used against P2 Verzik.');
+    }
+
     // Some set effects are currently not accounted for
     if (
       this.wearingAll(['Blue moon helm', 'Blue moon chestplate', 'Blue moon tassets', 'Blue moon spear'])
@@ -751,6 +769,9 @@ export default class BaseCalc {
     }
     if (this.wearing('Echo boots')) {
       this.addIssue(UserIssueType.FEET_RECOIL_UNSUPPORTED, 'The calculator does not account for recoil damage.');
+    }
+    if (this.wearing('Confliction Gauntlets')) {
+      this.addIssue(UserIssueType.EQUIPMENT_GLOVE_EFFECT_UNSUPPORTED, 'The passive effect should be added, depending on how much you trust in my ability to do Markov chain math, but was also verified by simulations. ~ washer');
     }
   }
 }

@@ -44,6 +44,8 @@ import {
   UNDERWATER_MONSTERS,
   USES_DEFENCE_LEVEL_FOR_MAGIC_DEFENCE_NPC_IDS,
   VERZIK_P1_IDS,
+  VERZIK_P2_IDS,
+  MAIDEN_CRAB_IDS,
 } from '@/lib/constants';
 import { EquipmentCategory } from '@/enums/EquipmentCategory';
 import { DetailKey } from '@/lib/CalcDetails';
@@ -864,6 +866,10 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       maxHit = Math.max(1, Math.trunc(magicLevel / 3 - 2));
     } else if (this.wearing(['Sanguinesti staff', 'Holy sanguinesti staff'])) {
       maxHit = Math.max(1, Math.trunc(magicLevel / 3 - 1));
+    } else if (this.wearing('The Eye of Ayak')) {
+      maxHit = Math.trunc(magicLevel / 3 - 6);
+    } else if (this.wearing("TM's Crackpot")) {
+      maxHit = Math.trunc(magicLevel / 4);
     } else if (this.wearing('Dawnbringer')) {
       maxHit = Math.max(1, Math.trunc(magicLevel / 6 - 1));
       if (this.opts.usingSpecialAttack) { // guaranteed hit between 75-150, ignores bonuses
@@ -1125,6 +1131,13 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       BaseCalc.getNormalAccuracyRoll(atk, def),
     );
 
+    if (this.player.style.type === 'magic' && this.wearing('Confliction Gauntlets') && !this.player.equipment.weapon?.isTwoHanded) {
+      hitChance = this.track(
+        DetailKey.PLAYER_ACCURACY_CONFLICTED,
+        (3 * hitChance - 3 * (hitChance ** 2) + (hitChance ** 3)) / (2 - hitChance),
+      );
+    }
+
     if (this.isWearingFang() && this.player.style.type === 'stab') {
       if (TOMBS_OF_AMASCUT_MONSTER_IDS.includes(this.monster.id)) {
         hitChance = this.track(DetailKey.PLAYER_ACCURACY_FANG_TOA, 1 - (1 - hitChance) ** 2);
@@ -1134,6 +1147,23 @@ export default class PlayerVsNPCCalc extends BaseCalc {
           BaseCalc.getFangAccuracyRoll(atk, def),
         );
       }
+    }
+
+    if (this.player.spell?.name.includes('Ice') && MAIDEN_CRAB_IDS.includes(this.monster.id)) {
+      const guaranteedFreezeRoll = (this.player.skills.magic + 9) * 204;
+      const playerMagicRoll = this.getPlayerMaxMagicAttackRoll();
+
+      if (playerMagicRoll > guaranteedFreezeRoll) {
+        return 1.0;
+      }
+    }
+
+    const tmStaffAccuracy = this.isWearingTmStaff();
+    if (tmStaffAccuracy) {
+      hitChance = this.track(
+        DetailKey.PLAYER_ACCURACY_TM_STAFF,
+        BaseCalc.getTmStaffAccuracyRoll(atk, def),
+      );
     }
 
     return this.track(DetailKey.PLAYER_ACCURACY_FINAL, hitChance);
@@ -1668,6 +1698,8 @@ export default class PlayerVsNPCCalc extends BaseCalc {
       );
     }
 
+    dist = dist.transform(flatLimitTransformer(this.monster.skills.hp));
+
     return dist;
   }
 
@@ -1727,6 +1759,9 @@ export default class PlayerVsNPCCalc extends BaseCalc {
    * Returns the player's attack speed.
    */
   public getAttackSpeed(): number {
+    if (this.isUsingMeleeStyle() && this.isWearingScythe() && VERZIK_P2_IDS.includes(this.monster.id)) {
+      return 16 / 3;
+    }
     return this.player.attackSpeed
       ?? calculateAttackSpeed(this.player, this.monster);
   }

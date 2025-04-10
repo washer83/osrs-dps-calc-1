@@ -30,6 +30,7 @@ import { useCalc } from '@/worker/CalcWorker';
 const XAxisOptions = [
   { label: 'Monster defence level', axisLabel: 'Level', value: CompareXAxis.MONSTER_DEF },
   { label: 'Monster magic level', axisLabel: 'Level', value: CompareXAxis.MONSTER_MAGIC },
+  { label: 'Monster magic defence', axisLabel: 'Level', value: CompareXAxis.MONSTER_MAGIC_DEF },
   { label: 'Monster HP', axisLabel: 'Hitpoints', value: CompareXAxis.MONSTER_HP },
   { label: 'Player attack level', axisLabel: 'Level', value: CompareXAxis.PLAYER_ATTACK_LEVEL },
   { label: 'Player strength level', axisLabel: 'Level', value: CompareXAxis.PLAYER_STRENGTH_LEVEL },

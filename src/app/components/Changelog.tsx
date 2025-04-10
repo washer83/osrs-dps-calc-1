@@ -40,6 +40,17 @@ const Changelog: React.FC = () => {
         title="Changelog"
       >
         <div className="text-sm bg-dark-500 rounded p-2 shadow-inner border border-dark-200 overflow-auto max-h-64">
+          <ChangelogEntry date="9 April 2025">
+            <li>
+              realized this shit exists.
+            </li>
+            <li>
+              primary diff between this dps calc is beta items...
+            </li>
+            <li>
+              5.3t scy on verzik, 100% freeze accuracy on maiden
+            </li>
+          </ChangelogEntry>
           <ChangelogEntry date="19 November 2024">
             <li>
               Increased maximum number of loadouts to 6, instead of 5.

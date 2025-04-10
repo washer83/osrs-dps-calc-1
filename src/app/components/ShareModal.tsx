@@ -58,7 +58,7 @@ const ShareModal: React.FC = observer(() => {
             <a
               className="form-control flex items-center gap-1 hover:scale-105 no-underline"
               type="button"
-              href={`https://dps.osrs.wiki?id=${shareId}`}
+              href={`https://osrs-dps-calc-polled.vercel.app/osrs-dps?id=${shareId}`}
               target="_blank"
             >
               <IconExternalLink className="w-5" />

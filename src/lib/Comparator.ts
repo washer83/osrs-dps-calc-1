@@ -13,6 +13,7 @@ import { DPS_PRECISION } from '@/lib/constants';
 
 export enum CompareXAxis {
   MONSTER_DEF,
+  MONSTER_MAGIC_DEF,
   MONSTER_MAGIC,
   MONSTER_HP,
   PLAYER_ATTACK_LEVEL,
@@ -58,12 +59,16 @@ export default class Comparator {
 
   private readonly commonOpts: CalcOpts;
 
-  constructor(players: Player[], monster: Monster, xAxis: CompareXAxis, yAxis: CompareYAxis) {
+  constructor(
+    players: Player[],
+    monster: Monster,
+    xAxis: CompareXAxis,
+    yAxis: CompareYAxis,
+  ) {
     this.baseLoadouts = players;
     this.baseMonster = scaleMonster(monster);
     this.xAxis = xAxis;
     this.yAxis = yAxis;
-
     this.commonOpts = {
       loadoutName: 'comparator',
       disableMonsterScaling: true,
@@ -71,25 +76,24 @@ export default class Comparator {
   }
 
   private* inputsIterator(): Generator<InputSet> {
-    const monsterInput = (x: number, alterations: PartialDeep<Monster>): InputSet => ({
+    const monsterInput = (
+      x: number,
+      alterations: PartialDeep<Monster>,
+    ): InputSet => ({
       xValue: x,
       loadouts: this.baseLoadouts,
-      monster: typedMerge(
-        this.baseMonster,
-        alterations,
-      ),
+      monster: typedMerge(this.baseMonster, alterations),
     });
-
-    const playerInput = (x: number, alterations: PartialDeep<Player>): InputSet => ({
+    const playerInput = (
+      x: number,
+      alterations: PartialDeep<Player>,
+    ): InputSet => ({
       xValue: x,
-      loadouts: this.baseLoadouts.map((p) => typedMerge(
-        p,
-        alterations,
-      )),
+      loadouts: this.baseLoadouts.map((p) => typedMerge(p, alterations)),
       monster: this.baseMonster,
     });
-
-    const skillInput = (x: number, stat: keyof PlayerSkills): InputSet => playerInput(x, { skills: { [stat]: x }, boosts: { [stat]: 0 } });
+    const skillInput = (x: number, stat: keyof PlayerSkills): InputSet =>
+      playerInput(x, { skills: { [stat]: x }, boosts: { [stat]: 0 } });
 
     switch (this.xAxis) {
       case CompareXAxis.MONSTER_DEF:
@@ -104,16 +108,19 @@ export default class Comparator {
         }
         return;
 
+      case CompareXAxis.MONSTER_MAGIC_DEF:
+        for (let newMagicDef = this.baseMonster.defensive.magic; newMagicDef >= 0; newMagicDef--) {
+          yield monsterInput(newMagicDef, { defensive: { magic: newMagicDef } });
+        }
+        return;
+
       case CompareXAxis.MONSTER_HP: {
         for (let newHp = this.baseMonster.skills.hp; newHp >= 0; newHp--) {
           yield {
             xValue: newHp,
             loadouts: this.baseLoadouts,
             monster: scaleMonsterHpOnly(
-              merge(
-                this.baseMonster,
-                { inputs: { monsterCurrentHp: newHp } },
-              ),
+              merge(this.baseMonster, { inputs: { monsterCurrentHp: newHp } }),
             ),
           };
         }
@@ -151,7 +158,11 @@ export default class Comparator {
         return;
 
       case CompareXAxis.STAT_DECAY_RESTORE: {
-        const limit = max(this.baseLoadouts, (l) => max(keys(l.boosts), (k) => Math.abs(l.boosts[k]))) || 0;
+        const limit =
+          max(
+            this.baseLoadouts,
+            (l) => max(keys(l.boosts), (k) => Math.abs(l.boosts[k])),
+          ) || 0;
         for (let restore = 0; restore <= limit; restore++) {
           const restoredLoadouts = this.baseLoadouts.map((p) => {
             const newBoosts: PlayerSkills = {} as PlayerSkills;
@@ -166,7 +177,6 @@ export default class Comparator {
             });
             return typedMerge(p, { boosts: newBoosts });
           });
-
           yield {
             xValue: restore,
             loadouts: restoredLoadouts,
@@ -183,38 +193,36 @@ export default class Comparator {
 
   private getOutput(x: InputSet): { [loadout: string]: string | undefined } {
     const res: { [loadout: string]: string | undefined } = {};
-    const apply = (resultProvider: (loadout: Player) => string | undefined) => x.loadouts.forEach((l) => {
-      res[l.name] = resultProvider(l);
-    });
-
-    const forwardCalc = (loadout: Player) => new PlayerVsNPCCalc(loadout, x.monster, this.commonOpts);
-    const reverseCalc = (loadout: Player) => new NPCVsPlayerCalc(loadout, x.monster, this.commonOpts);
+    const apply = (resultProvider: (loadout: Player) => string | undefined) =>
+      x.loadouts.forEach((l) => { res[l.name] = resultProvider(l); });
+    const forwardCalc = (loadout: Player) =>
+      new PlayerVsNPCCalc(loadout, x.monster, this.commonOpts);
+    const reverseCalc = (loadout: Player) =>
+      new NPCVsPlayerCalc(loadout, x.monster, this.commonOpts);
 
     switch (this.yAxis) {
       case CompareYAxis.PLAYER_DPS:
         apply((l) => forwardCalc(l).getDps().toFixed(DPS_PRECISION));
         break;
-
       case CompareYAxis.PLAYER_EXPECTED_HIT:
-        apply((l) => forwardCalc(l).getDistribution().getExpectedDamage().toFixed(DPS_PRECISION));
+        apply((l) =>
+          forwardCalc(l).getDistribution().getExpectedDamage().toFixed(DPS_PRECISION),
+        );
         break;
-
       case CompareYAxis.PLAYER_TTK:
         apply((l) => forwardCalc(l).getTtk()?.toFixed(DPS_PRECISION));
         break;
-
       case CompareYAxis.MONSTER_DPS:
         apply((l) => reverseCalc(l).getDps().toFixed(DPS_PRECISION));
         break;
-
       case CompareYAxis.DAMAGE_TAKEN:
-        apply((l) => reverseCalc(l).getAverageDamageTaken()?.toFixed(DPS_PRECISION));
+        apply((l) =>
+          reverseCalc(l).getAverageDamageTaken()?.toFixed(DPS_PRECISION),
+        );
         break;
-
       case CompareYAxis.PLAYER_MAX_HIT:
         apply((l) => forwardCalc(l).getMax().toString());
         break;
-
       default:
         throw new Error(`unimplemented yAxisType ${this.yAxis}`);
     }
@@ -229,27 +237,18 @@ export default class Comparator {
       let dwhCount = 1;
       while (currentDef >= 100) {
         currentDef -= Math.trunc(currentDef * 3 / 10);
-        annotations.push({
-          label: `DWH x${dwhCount}`,
-          value: currentDef,
-        });
+        annotations.push({ label: `DWH x${dwhCount}`, value: currentDef });
         dwhCount += 1;
       }
-
       currentDef = this.baseMonster.skills.def;
       let elderMauls = 1;
       while (currentDef >= 100) {
         currentDef -= Math.trunc(currentDef * 35 / 100);
-        annotations.push({
-          label: `Elder Maul x${elderMauls}`,
-          value: currentDef,
-        });
+        annotations.push({ label: `Elder Maul x${elderMauls}`, value: currentDef });
         elderMauls += 1;
       }
-
       return annotations;
     }
-
     return [];
   }
 
@@ -260,7 +259,6 @@ export default class Comparator {
 
   public getEntries(): [ChartEntry[], number] {
     let domainMax: number = 0;
-
     const res: ChartEntry[] = [];
     for (const x of this.inputsIterator()) {
       const y = this.getOutput(x);
@@ -270,13 +268,8 @@ export default class Comparator {
           domainMax = f;
         }
       }
-
-      res.push({
-        ...y,
-        name: x.xValue,
-      });
+      res.push({ ...y, name: x.xValue });
     }
-
     return [res, domainMax];
   }
 }
