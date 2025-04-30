@@ -71,6 +71,7 @@ export interface PlayerVsNPCCalculatedLoadout extends CalculatedLoadout {
   specAccuracy?: number,
   specMaxHit?: number,
   specExpected?: number,
+  specExpectedDefReduction?: number,
   specMomentDps?: number,
   specFullDps?: number,
   specHitDist?: ChartEntry[],

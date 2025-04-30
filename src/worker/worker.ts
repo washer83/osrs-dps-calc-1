@@ -49,6 +49,7 @@ const computePvMValues: Handler<WorkerRequestType.COMPUTE_BASIC> = async (data) 
       specAccuracy: specCalc?.getHitChance(),
       specMaxHit: specCalc?.getMax(),
       specExpected: specCalc?.getExpectedDamage(),
+      specExpectedDefReduction: specCalc?.getExpectedDefReduction(),
       specMomentDps: specCalc?.getDps(),
       specFullDps: specCalc?.getSpecDps(),
       specHitDist: specCalc?.getDistribution().asHistogram(calcOpts.hitDistHideMisses),

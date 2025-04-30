@@ -67,6 +67,7 @@ import {
   rubyBolts,
 } from '@/lib/dists/bolts';
 import { burningClawDoT, burningClawSpec, dClawDist } from '@/lib/dists/claws';
+import { getDefenceFloor } from './scaling/DefenceReduction';
 
 const PARTIALLY_IMPLEMENTED_SPECS: string[] = [
   'Ancient godsword',
@@ -176,6 +177,179 @@ export default class PlayerVsNPCCalc extends BaseCalc {
     }
 
     return this.track(DetailKey.NPC_DEFENCE_ROLL_FINAL, defenceRoll);
+  }
+
+  public getExpectedDefReduction(): number {
+    if (!this.opts.usingSpecialAttack || !this.player.equipment.weapon) {
+      return 0;
+    }
+
+    const weaponName = this.player.equipment.weapon.name;
+    const currentDefence = this.monster.skills.def;
+    const magicLevel = this.monster.skills.magic;
+    const defenceFloor = getDefenceFloor(this.monster); //
+    let expectedReduction = 0;
+
+    // --- Helper function to get SPECIFIC spec accuracy (DUPLICATED LOGIC) ---
+    // NOTE: This duplicates logic from getHitChance/AttackRoll methods
+    const getSpecAccuracy = (weapon: string | undefined, monsterDefRoll?: number): number => {
+      let attackRoll = 0;
+      // Use provided defence roll if available, otherwise calculate the standard one for the current monster state
+      const npcDefenceRoll = monsterDefRoll ?? this.getNPCDefenceRoll();
+
+      // --- RANGED ACCURACY LOGIC (Duplicated from getPlayerMaxRangedAttackRoll) ---
+      if (this.player.style.type === 'ranged') {
+        let effectiveLevel = this.trackAdd('spec_acc_lvl_rng', this.player.skills.ranged, this.player.boosts.ranged);
+        // Apply prayers
+        for (const p of this.getCombatPrayers('factorAccuracy')) {
+          effectiveLevel = Math.trunc(effectiveLevel * p.factorAccuracy![0] / p.factorAccuracy![1]);
+        }
+        // Apply stance bonus
+        if (this.player.style.stance === 'Accurate') effectiveLevel += 3;
+        effectiveLevel += 8; // Base effective level adjustment
+        // Apply void bonus
+        if (this.isWearingRangedVoid()) { // Check includes elite void
+          effectiveLevel = Math.trunc(effectiveLevel * 11 / 10); // Use 1.1x, Elite handled in max hit
+        }
+        const gearBonus = this.trackAdd('spec_acc_gear_rng', this.player.offensive.ranged, 64);
+        attackRoll = this.trackFactor('spec_acc_base_roll_rng', effectiveLevel, [gearBonus, 1]);
+
+        // Apply equipment set bonuses (Salve(i), Black Mask(i), Rev weps, DHCB, etc.) - DUPLICATED LOGIC
+        const mattrs = this.monster.attributes;
+        const buffs = this.player.buffs;
+        if (this.wearing('Salve amulet(ei)') && mattrs.includes(MonsterAttribute.UNDEAD)) {
+          attackRoll = Math.trunc(attackRoll * 6 / 5);
+        } else if (this.wearing('Salve amulet(i)') && mattrs.includes(MonsterAttribute.UNDEAD)) {
+          attackRoll = Math.trunc(attackRoll * 7 / 6);
+        } else if (this.isWearingImbuedBlackMask() && buffs.onSlayerTask) {
+          attackRoll = Math.trunc(attackRoll * 23 / 20);
+        }
+        // Add other equipment bonuses here (Twisted Bow, DHCB, Rev weapons...)
+
+        // --- Apply Ranged Spec Accuracy Multipliers ---
+        // Tonalztics spec has no inherent accuracy multiplier, but uses ranged accuracy
+        if (weapon === 'Zaryte crossbow' || weapon === 'Webweaver bow') {
+          attackRoll = this.trackFactor('spec_acc_mod_zcb', attackRoll, [2, 1]);
+        }
+        // Add other ranged spec accuracy mods (MSB(i), Ballista) if needed for other calcs
+        // -------------------------------------
+      } else if (this.isUsingMeleeStyle()) {
+        let effectiveLevel = this.trackAdd('spec_acc_lvl_mel', this.player.skills.atk, this.player.boosts.atk);
+        for (const p of this.getCombatPrayers('factorAccuracy')) { effectiveLevel = Math.trunc(effectiveLevel * p.factorAccuracy![0] / p.factorAccuracy![1]); }
+        let stanceBonus = 8; if (this.player.style.stance === 'Accurate') stanceBonus += 3; else if (this.player.style.stance === 'Controlled') stanceBonus += 1;
+        effectiveLevel = this.trackAdd('spec_acc_eff_lvl_mel', effectiveLevel, stanceBonus);
+        if (this.isWearingMeleeVoid()) { effectiveLevel = Math.trunc(effectiveLevel * 11 / 10); }
+        const gearBonus = this.trackAdd('spec_acc_gear_mel', this.player.style.type ? this.player.offensive[this.player.style.type] : 0, 64);
+        attackRoll = this.trackFactor('spec_acc_base_roll_mel', effectiveLevel, [gearBonus, 1]);
+        // Apply equipment set bonuses...
+
+        // Apply Melee Spec Accuracy Multipliers
+        if (weapon === 'Bandos godsword') { attackRoll = this.trackFactor('spec_acc_mod_bgs', attackRoll, [2, 1]); } else if (weapon === 'Elder maul') { attackRoll = this.trackFactor('spec_acc_mod_elder', attackRoll, [5, 4]); }
+        // ... other melee spec mods ...
+      } else if (this.player.style.type === 'magic') {
+        // Base Magic Attack Roll Calculation...
+        // Apply relevant spec accuracy mods for magic weapons...
+      }
+
+      // Use appropriate accuracy formula
+      if (this.isWearingFang() && this.player.style.type === 'stab') {
+        // Fang check might need context if spec accuracy roll differs
+        return BaseCalc.getFangAccuracyRoll(attackRoll, npcDefenceRoll);
+      }
+      return BaseCalc.getNormalAccuracyRoll(attackRoll, npcDefenceRoll);
+    };
+
+    // --- Helper function to get SPECIFIC spec expected damage (DUPLICATED LOGIC) ---
+    // Only needed for BGS reduction calculation
+    const getSpecExpectedDamage = (weapon: string | undefined): number => {
+      if (weapon !== 'Bandos godsword') return 0;
+      const specMinHit = 0; let specMaxHit = 0;
+      if (this.isUsingMeleeStyle()) {
+        // Recalculate BGS Max Hit
+        const baseLevel = this.trackAdd('spec_dmg_lvl_bgs', this.player.skills.str, this.player.boosts.str);
+        let effectiveLevel = baseLevel;
+        for (const p of this.getCombatPrayers()) { effectiveLevel = Math.trunc(effectiveLevel * p.factorStrength![0] / p.factorStrength![1]); }
+        let stanceBonus = 8; if (this.player.style.stance === 'Aggressive') stanceBonus += 3; else if (this.player.style.stance === 'Controlled') stanceBonus += 1;
+        effectiveLevel = this.trackAdd('spec_dmg_eff_lvl_bgs', effectiveLevel, stanceBonus);
+        if (this.isWearingMeleeVoid()) { effectiveLevel = Math.trunc(effectiveLevel * 11 / 10); }
+        const gearBonus = this.trackAdd('spec_dmg_gear_bgs', this.player.bonuses.str, 64);
+        const baseMax = this.trackMaxHitFromEffective('spec_dmg_base_max_bgs', effectiveLevel, gearBonus);
+        specMaxHit = baseMax;
+        // Apply set bonuses...
+        specMaxHit = this.trackFactor('spec_dmg_mod_bgs', specMaxHit, [11, 10]); // BGS +10% spec max hit (on top of base GS)
+      }
+      const accuracy = getSpecAccuracy(weapon);
+      const averageHit = (specMinHit + specMaxHit) / 2;
+      return accuracy * averageHit; // Simplified expected damage
+    };
+
+    // --- Defence Reduction Logic ---
+    const defenceReducingSpecs: { [key: string]: () => number } = {
+      'Dragon warhammer': () => {
+        const accuracy = getSpecAccuracy(weaponName);
+        return accuracy * Math.floor(currentDefence * 0.3);
+      },
+      'Bandos godsword': () => {
+        // Recalculate BGS accuracy & expected damage for this spec
+        const accuracy = getSpecAccuracy(weaponName); // Gets the 2x accuracy roll
+        const specED = getSpecExpectedDamage(weaponName); // Gets expected damage based on 1.1x max hit
+        // The expected reduction is P(Hit) * E[Damage | Hit].
+        // For linear dist, E[Damage | Hit] = Average Hit = (min + max) / 2.
+        // The getSpecExpectedDamage() helper currently calculates P(Hit) * AverageHit.
+        // So using specED directly here is the correct expected reduction value.
+        return accuracy * specED;
+      },
+      'Tonalztics of ralos': () => {
+        // Accuracy of the first hitsplat
+        const acc1 = getSpecAccuracy(weaponName); // Uses Ranged accuracy from helper
+        const reductionPerHit = Math.floor(magicLevel * 0.1);
+
+        if (reductionPerHit <= 0) return 0;
+
+        // Expected reduction from Hit 1
+        const expectedReduction1 = acc1 * reductionPerHit;
+
+        // Calculate defence state IF first hit lands
+        const defAfterHit1 = Math.max(defenceFloor, currentDefence - reductionPerHit);
+
+        // Calculate the NPC's defence roll based on the potentially reduced level
+        // Ralos uses Standard Ranged Defence bonus
+        const npcDefBonus = this.monster.defensive.standard;
+        const npcEffectiveDefLevelAfterHit1 = defAfterHit1 + 9;
+        const npcDefRollAfterHit1 = npcEffectiveDefLevelAfterHit1 * (npcDefBonus + 64);
+
+        // Accuracy of the second hitsplat given the first hit landed
+        const accuracyTwoFirstHit = getSpecAccuracy(weaponName, npcDefRollAfterHit1);
+
+        // Accuracy of the second hitsplat given the first hit missed (defence didn't change)
+        const accuracyTwoFirstMiss = acc1;
+
+        // Expected reduction from Hit 2 (weighted average)
+        const expectedReduction2 = (acc1 * accuracyTwoFirstHit + (1 - acc1) * accuracyTwoFirstMiss) * reductionPerHit;
+
+        return expectedReduction1 + expectedReduction2;
+      },
+      'Elder maul': () => {
+        const accuracy = getSpecAccuracy(weaponName); // Includes 1.25x mod from helper
+        return accuracy * Math.floor(currentDefence * 0.35);
+      },
+    };
+
+    // --- Calculate and apply floor ---
+    if (weaponName && defenceReducingSpecs[weaponName]) {
+      expectedReduction = defenceReducingSpecs[weaponName]();
+    }
+
+    const potentialReduction = currentDefence - defenceFloor;
+    if (potentialReduction <= 0) {
+      expectedReduction = 0;
+    } else {
+      // Cap the expected reduction at the amount needed to reach the floor
+      expectedReduction = Math.min(expectedReduction, potentialReduction);
+    }
+
+    // Ensure non-negative
+    return Math.max(0, expectedReduction);
   }
 
   private getPlayerMaxMeleeAttackRoll(): number {

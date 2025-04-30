@@ -33,6 +33,8 @@ const calcKeyToString = (value: number, calcKey: keyof PlayerVsNPCCalculatedLoad
     case 'expectedHit':
     case 'specExpected':
       return value.toFixed(EXPECTED_HIT_PRECISION);
+    case 'specExpectedDefReduction':
+      return value.toFixed(1);
     case 'ttk':
       return value === 0
         ? '-----'
@@ -75,26 +77,38 @@ const ResultRow: React.FC<PropsWithChildren<IResultRowProps>> = observer((props)
 
     return Object.values(loadouts).map((l, i) => {
       const value = l[calcKey] as number;
-      if (hasResults && calcKey.startsWith('spec') && (value === undefined || value === null)) {
-        // results are in, but the weapon has no implemented special attack
-        // we colspan on the first entry (specAccuracy) if extended, and just return nothing for the rest
-        return (calcKey === 'specAccuracy' || !collapseSpecs)
+      const isSpecRow = typeof calcKey === 'string' && calcKey.startsWith('spec');
+      const specDoesNotExistOrImplemented = isSpecRow && (l.specAccuracy === undefined || l.specAccuracy === null);
+
+      if (hasResults && specDoesNotExistOrImplemented) {
+        // Ensure this check correctly identifies when a spec doesn't exist or isn't calc'd
+        const shouldShowPlaceholder = calcKey === 'specAccuracy' || (!collapseSpecs && isSpecRow);
+        return shouldShowPlaceholder
           ? (
             // eslint-disable-next-line react/no-array-index-key
-            <th key={i} rowSpan={5} className="w-28 border-r bg-dark-400 text-dark-200 text-center text-xs">
+            <th
+              key={i}
+              rowSpan={6} // <--- INCREMENT ROWSPAN if adding a row
+              className="w-28 border-r bg-dark-400 text-dark-200 text-center text-xs align-middle"
+            >
               {userIssues.find((is) => is.loadout === `${i + 1}` && is.type === UserIssueType.EQUIPMENT_SPEC_UNSUPPORTED) ? 'Not implemented' : 'N/A'}
             </th>
           ) : undefined;
       }
+      // --------------------------------------------------------------------
+
+      // Existing highlight logic
+      const isBest = (Object.values(loadouts).length > 1) && bestValue === value && isDefined(value);
+      const highlightClass = isBest ? 'dark:text-green-200 text-green-800' : 'dark:text-body-200 text-black';
 
       return (
         // eslint-disable-next-line react/no-array-index-key
-        <th className={`text-center w-28 border-r ${((Object.values(loadouts).length > 1) && bestValue === value) ? 'dark:text-green-200 text-green-800' : 'dark:text-body-200 text-black'}`} key={i}>
-          {hasResults ? calcKeyToString(value, calcKey) : (<Spinner className="w-3" />)}
+        <th className={`text-center w-28 border-r ${highlightClass}`} key={i}>
+          {hasResults ? calcKeyToString(value as number, calcKey) : (<Spinner className="w-3" />)}
         </th>
       );
     });
-  }, [loadouts, calcKey, collapseSpecs, hasResults, userIssues]);
+  }, [loadouts, calcKey, collapseSpecs, hasResults, userIssues]); // Ensure dependencies are correct
 
   return (
     <tr>
@@ -104,24 +118,27 @@ const ResultRow: React.FC<PropsWithChildren<IResultRowProps>> = observer((props)
   );
 });
 
+// --- PlayerVsNPCResultsTable component ---
 const PlayerVsNPCResultsTable: React.FC = observer(() => {
   const store = useStore();
   const { selectedLoadout, calc } = store;
   const { resultsExpanded } = store.prefs;
 
   const loadouts = toJS(calc.loadouts);
-  const hasResults = useMemo(() => some(loadouts, (l) => some(Object.entries(l), ([, v]) => isDefined(v))), [loadouts]);
+  // Check if *any* results field has a value to determine if calculations are complete
+  const hasResults = useMemo(() => some(loadouts, (l) => some(Object.entries(l), ([k, v]) => k !== 'ttkDist' && isDefined(v))), [loadouts]);
 
   return (
     <table>
       <thead>
+        {/* ... Header row with loadout names ... */}
         <tr>
           <th aria-label="blank" className="bg-btns-400 border-r dark:bg-dark-500 select-none" />
           {store.loadouts.map(({ name }, i) => (
             <th
               role="button"
               tabIndex={0}
-            // eslint-disable-next-line react/no-array-index-key
+             // eslint-disable-next-line react/no-array-index-key
               key={i}
               className={`text-center w-28 border-r py-1.5 font-bold font-serif leading-tight text-xs cursor-pointer transition-colors ${selectedLoadout === i ? 'bg-orange-400 dark:bg-orange-700' : 'bg-btns-400 dark:bg-dark-500'}`}
               onClick={() => store.setSelectedLoadout(i)}
@@ -150,6 +167,7 @@ const PlayerVsNPCResultsTable: React.FC = observer(() => {
           Accuracy
         </ResultRow>
         {!resultsExpanded && (
+        // Show spec expected hit when collapsed
           <ResultRow calcKey="specExpected" title="The expected hit that the special attack will deal to the monster per use, including misses" hasResults={hasResults} collapseSpecs={resultsExpanded}>
             Spec expected hit
           </ResultRow>
@@ -183,6 +201,11 @@ const PlayerVsNPCResultsTable: React.FC = observer(() => {
             <ResultRow calcKey="specExpected" title="The expected hit that the special attack will deal to the monster per use, including misses" hasResults={hasResults} collapseSpecs={resultsExpanded}>
               Expected hit
             </ResultRow>
+            {/* --- ADD THIS ROW for Expected Defence Reduction --- */}
+            <ResultRow calcKey="specExpectedDefReduction" title="The expected defence level reduction applied by the special attack per use, considering accuracy" hasResults={hasResults} collapseSpecs={resultsExpanded}>
+              Expected def reduction
+            </ResultRow>
+            {/* ------------------------------------------------ */}
           </>
         )}
       </tbody>

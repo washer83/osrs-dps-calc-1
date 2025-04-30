@@ -87,7 +87,7 @@ export interface WorkerResponse<T extends WorkerRequestType> {
 }
 
 export interface ComputeBasicResponse extends WorkerResponse<WorkerRequestType.COMPUTE_BASIC> {
-  payload: Omit<PlayerVsNPCCalculatedLoadout, 'ttkDist'>[],
+  payload: (Omit<PlayerVsNPCCalculatedLoadout, 'ttkDist'> & { specExpectedDefenceReduction?: number })[], // Modify here
 }
 
 export interface ComputeReverseResponse extends WorkerResponse<WorkerRequestType.COMPUTE_REVERSE> {
