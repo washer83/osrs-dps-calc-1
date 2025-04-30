@@ -7,6 +7,7 @@ module.exports = {
     rules: {
         '@next/next/no-img-element': 'off',
         'react/require-default-props': 'off',
+        'react/no-array-index-key': 'off',
         'max-len': 'off',
         'react/function-component-definition': ['error', {'namedComponents': 'arrow-function'}],
         'radix': ['error', 'as-needed'],
