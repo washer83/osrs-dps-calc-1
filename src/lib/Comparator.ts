@@ -11,24 +11,9 @@ import NPCVsPlayerCalc from '@/lib/NPCVsPlayerCalc'; //
 import { ChartAnnotation, ChartEntry } from '@/types/State'; //
 import { DPS_PRECISION } from '@/lib/constants'; //
 
-<<<<<<< Updated upstream
-export enum CompareXAxis {
-  MONSTER_DEF,
-  MONSTER_MAGIC_DEF,
-  MONSTER_MAGIC,
-  MONSTER_HP,
-  PLAYER_ATTACK_LEVEL,
-  PLAYER_STRENGTH_LEVEL,
-  PLAYER_RANGED_LEVEL,
-  PLAYER_MAGIC_LEVEL,
-  STAT_DECAY_RESTORE,
-  PLAYER_DEFENCE_LEVEL,
-}
-=======
 // Enums (no changes needed)
 export enum CompareXAxis { MONSTER_DEF, MONSTER_MAGIC, MONSTER_HP, PLAYER_ATTACK_LEVEL, PLAYER_STRENGTH_LEVEL, PLAYER_RANGED_LEVEL, PLAYER_MAGIC_LEVEL, STAT_DECAY_RESTORE, PLAYER_DEFENCE_LEVEL, MONSTER_DEF_INITIAL } //
 export enum CompareYAxis { PLAYER_DPS, PLAYER_EXPECTED_HIT, MONSTER_DPS, DAMAGE_TAKEN, PLAYER_TTK, PLAYER_MAX_HIT, MONSTER_EXPECTED_DEF_AFTER_SPEC } //
->>>>>>> Stashed changes
 
 // Interfaces (no changes needed)
 interface InputSet { xValue: number, loadouts: Player[], monster: Monster } //
@@ -47,12 +32,7 @@ export default class Comparator {
 
   private readonly commonOpts: CalcOpts;
 
-  constructor(
-    players: Player[],
-    monster: Monster,
-    xAxis: CompareXAxis,
-    yAxis: CompareYAxis,
-  ) {
+  constructor(players: Player[], monster: Monster, xAxis: CompareXAxis, yAxis: CompareYAxis) {
     this.baseLoadouts = players;
     this.originalMonster = monster;
     this.scaledBaseMonster = scaleMonster(monster);
@@ -85,26 +65,9 @@ export default class Comparator {
 
   // --- inputsIterator (no changes needed) ---
   private* inputsIterator(): Generator<InputSet> {
-    const monsterInput = (
-      x: number,
-      alterations: PartialDeep<Monster>,
-    ): InputSet => ({
+    const monsterInput = (x: number, alterations: PartialDeep<Monster>): InputSet => ({
       xValue: x,
       loadouts: this.baseLoadouts,
-<<<<<<< Updated upstream
-      monster: typedMerge(this.baseMonster, alterations),
-    });
-    const playerInput = (
-      x: number,
-      alterations: PartialDeep<Player>,
-    ): InputSet => ({
-      xValue: x,
-      loadouts: this.baseLoadouts.map((p) => typedMerge(p, alterations)),
-      monster: this.baseMonster,
-    });
-    const skillInput = (x: number, stat: keyof PlayerSkills): InputSet =>
-      playerInput(x, { skills: { [stat]: x }, boosts: { [stat]: 0 } });
-=======
       monster: merge({}, this.originalMonster, alterations) as Monster,
     });
     const playerInput = (x: number, alterations: PartialDeep<Player>): InputSet => ({
@@ -113,7 +76,6 @@ export default class Comparator {
       monster: this.originalMonster,
     });
     const skillInput = (x: number, stat: keyof PlayerSkills): InputSet => playerInput(x, { skills: { [stat]: x }, boosts: { [stat]: 0 } });
->>>>>>> Stashed changes
 
     switch (this.xAxis) {
       case CompareXAxis.MONSTER_DEF:
@@ -125,35 +87,12 @@ export default class Comparator {
         return; }
       // --- Other cases ---
       case CompareXAxis.MONSTER_MAGIC:
-<<<<<<< Updated upstream
-        for (let newMagic = this.baseMonster.skills.magic; newMagic >= 0; newMagic--) {
-          yield monsterInput(newMagic, { skills: { magic: newMagic } });
-        }
-        return;
-
-      case CompareXAxis.MONSTER_MAGIC_DEF:
-        for (let newMagicDef = this.baseMonster.defensive.magic; newMagicDef >= 0; newMagicDef--) {
-          yield monsterInput(newMagicDef, { defensive: { magic: newMagicDef } });
-        }
-        return;
-
-      case CompareXAxis.MONSTER_HP: {
-        for (let newHp = this.baseMonster.skills.hp; newHp >= 0; newHp--) {
-          yield {
-            xValue: newHp,
-            loadouts: this.baseLoadouts,
-            monster: scaleMonsterHpOnly(
-              merge(this.baseMonster, { inputs: { monsterCurrentHp: newHp } }),
-            ),
-          };
-=======
         for (let newMagic = this.scaledBaseMonster.skills.magic; newMagic >= 0; newMagic--) { yield monsterInput(newMagic, { skills: { magic: newMagic } }); } return;
       case CompareXAxis.MONSTER_HP: {
         const initialHp = this.scaledBaseMonster.skills.hp;
         for (let newHp = initialHp; newHp >= 0; newHp--) {
           const currentMonsterState = merge({}, this.originalMonster, { inputs: { monsterCurrentHp: newHp } });
           yield { xValue: newHp, loadouts: this.baseLoadouts, monster: scaleMonsterHpOnly(currentMonsterState) };
->>>>>>> Stashed changes
         }
         return;
       }
@@ -168,11 +107,7 @@ export default class Comparator {
       case CompareXAxis.PLAYER_MAGIC_LEVEL:
         for (let newMagic = 0; newMagic <= 125; newMagic++) { yield skillInput(newMagic, 'magic'); } return;
       case CompareXAxis.STAT_DECAY_RESTORE: {
-        const limit =
-          max(
-            this.baseLoadouts,
-            (l) => max(keys(l.boosts), (k) => Math.abs(l.boosts[k])),
-          ) || 0;
+        const limit = max(this.baseLoadouts, (l) => max(keys(l.boosts), (k) => Math.abs(l.boosts[k]))) || 0;
         for (let restore = 0; restore <= limit; restore++) {
           const restoredLoadouts = this.baseLoadouts.map((p) => {
             const newBoosts: Partial<PlayerSkills> = {};
@@ -182,15 +117,7 @@ export default class Comparator {
             });
             return Object.keys(newBoosts).length > 0 ? typedMerge(p, { boosts: newBoosts }) : p;
           });
-<<<<<<< Updated upstream
-          yield {
-            xValue: restore,
-            loadouts: restoredLoadouts,
-            monster: this.baseMonster,
-          };
-=======
           yield { xValue: restore, loadouts: restoredLoadouts, monster: this.originalMonster };
->>>>>>> Stashed changes
         }
         return;
       }
@@ -199,42 +126,6 @@ export default class Comparator {
     }
   }
 
-<<<<<<< Updated upstream
-  private getOutput(x: InputSet): { [loadout: string]: string | undefined } {
-    const res: { [loadout: string]: string | undefined } = {};
-    const apply = (resultProvider: (loadout: Player) => string | undefined) =>
-      x.loadouts.forEach((l) => { res[l.name] = resultProvider(l); });
-    const forwardCalc = (loadout: Player) =>
-      new PlayerVsNPCCalc(loadout, x.monster, this.commonOpts);
-    const reverseCalc = (loadout: Player) =>
-      new NPCVsPlayerCalc(loadout, x.monster, this.commonOpts);
-
-    switch (this.yAxis) {
-      case CompareYAxis.PLAYER_DPS:
-        apply((l) => forwardCalc(l).getDps().toFixed(DPS_PRECISION));
-        break;
-      case CompareYAxis.PLAYER_EXPECTED_HIT:
-        apply((l) =>
-          forwardCalc(l).getDistribution().getExpectedDamage().toFixed(DPS_PRECISION),
-        );
-        break;
-      case CompareYAxis.PLAYER_TTK:
-        apply((l) => forwardCalc(l).getTtk()?.toFixed(DPS_PRECISION));
-        break;
-      case CompareYAxis.MONSTER_DPS:
-        apply((l) => reverseCalc(l).getDps().toFixed(DPS_PRECISION));
-        break;
-      case CompareYAxis.DAMAGE_TAKEN:
-        apply((l) =>
-          reverseCalc(l).getAverageDamageTaken()?.toFixed(DPS_PRECISION),
-        );
-        break;
-      case CompareYAxis.PLAYER_MAX_HIT:
-        apply((l) => forwardCalc(l).getMax().toString());
-        break;
-      default:
-        throw new Error(`unimplemented yAxisType ${this.yAxis}`);
-=======
   // --- getOutput (Corrected for specific loadout reduction) ---
   private getOutput(x: InputSet): { [key: string]: string | undefined } {
     const res: { [key: string]: string | undefined } = {};
@@ -294,7 +185,6 @@ export default class Comparator {
         default: console.error(`Unhandled yAxisType ${this.yAxis} in getOutput`);
       }
       // --- End Existing ---
->>>>>>> Stashed changes
     }
 
     return res;
@@ -307,31 +197,12 @@ export default class Comparator {
       // annotations.push({ label: `Base Def (${initialDef})`, value: initialDef }); return annotations;
     }
     if (this.xAxis === CompareXAxis.MONSTER_DEF) {
-<<<<<<< Updated upstream
-      const annotations: ChartAnnotation[] = [];
-      let currentDef = this.baseMonster.skills.def;
-      let dwhCount = 1;
-      while (currentDef >= 100) {
-        currentDef -= Math.trunc(currentDef * 3 / 10);
-        annotations.push({ label: `DWH x${dwhCount}`, value: currentDef });
-        dwhCount += 1;
-      }
-      currentDef = this.baseMonster.skills.def;
-      let elderMauls = 1;
-      while (currentDef >= 100) {
-        currentDef -= Math.trunc(currentDef * 35 / 100);
-        annotations.push({ label: `Elder Maul x${elderMauls}`, value: currentDef });
-        elderMauls += 1;
-      }
-      return annotations;
-=======
       const annotations: ChartAnnotation[] = []; let currentDef = this.scaledBaseMonster.skills.def;
       annotations.push({ label: `Base Def (${currentDef})`, value: currentDef }); let dwhCount = 1;
       while (currentDef >= 10 && dwhCount <= 5) {
         const reduction = Math.trunc(currentDef * 3 / 10); if (reduction === 0) break;
         currentDef -= reduction; annotations.push({ label: `DWH x${dwhCount}`, value: currentDef }); dwhCount += 1;
       } return annotations;
->>>>>>> Stashed changes
     }
     return [];
   }
@@ -342,26 +213,16 @@ export default class Comparator {
 
   // --- getEntries (no changes) ---
   public getEntries(): [ChartEntry[], number] {
-<<<<<<< Updated upstream
-    let domainMax: number = 0;
-    const res: ChartEntry[] = [];
-=======
     let domainMax: number = 0; const res: ChartEntry[] = [];
->>>>>>> Stashed changes
     for (const x of this.inputsIterator()) {
       const yOutputs = this.getOutput(x);
       for (const k of keys(yOutputs)) {
         const f = yOutputs[k] ? parseFloat(yOutputs[k]!) : 0;
         if (!Number.isNaN(f) && f > domainMax) { domainMax = f; }
       }
-<<<<<<< Updated upstream
-      res.push({ ...y, name: x.xValue });
-    }
-=======
       res.push({ ...yOutputs, name: x.xValue });
     }
     domainMax = Math.max(1, Math.ceil(domainMax * 1.05));
->>>>>>> Stashed changes
     return [res, domainMax];
   }
 }
